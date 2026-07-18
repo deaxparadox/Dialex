@@ -2,3 +2,37 @@
   display: block;
   height: 100%;
 }
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.topbar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 16px;
+  background: var(--page);
+}
+
+.topbar button {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: var(--ink-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.topbar button:hover {
+  color: var(--ink);
+  border-color: var(--ink-muted);
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+}

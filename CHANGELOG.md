@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-07-18 (frontend wired to real Django auth)
+
+- Built real auth for the Angular app (spec 0006, governed by the already-existing ADR 0001 — no new architecture decisions needed): `Auth` service using Angular 22's new `@Service()` decorator (root-scoped by default, `inject()`-only — verified this is a genuine new Angular 22 feature, not a broken generator default, before adopting it), a functional HTTP interceptor (JWT attach + de-duplicated 401 refresh-retry), `authGuard`/`guestGuard` route guards, and login/register screens styled with the already-validated `--page`/`--ground` token system rather than a fresh design cycle.
+- Added `django-cors-headers` (new backend dependency, confirmed with the user before adding) — the Angular dev server (`:4200`) and Django (`:8000`) are different origins, a gap this milestone's own spec missed until implementation.
+- **Real browser verification (Canary), 3 rounds, 4 bugs found and fixed** — each fix re-verified against a fresh browser context rather than assumed correct:
+  1. Angular's *built-in* XSRF interceptor silently skips cross-origin requests (verified against its source — compares request origin to page origin, no-ops on mismatch). Fixed by manually reading the `XSRF-TOKEN` cookie and attaching `X-XSRF-TOKEN` for requests to the trusted Django origin.
+  2. No silent refresh on app startup — a hard reload always lost the in-memory access token even with a valid `refresh_token` cookie. Fixed with `Auth.restoreSession()`, called from the app initializer.
+  3. Fixing #1 broke CORS entirely: `x-xsrf-token` is a non-simple header, triggering a preflight, and `django-cors-headers`' default `CORS_ALLOW_HEADERS` includes `x-csrftoken` (Django's *default* CSRF header name) but not `x-xsrf-token` (this project's deliberately renamed one). Fixed with an explicit `CORS_ALLOW_HEADERS` setting.
+  4. Fixing #3 still left a 403 — from `CsrfViewMiddleware`'s `Origin` check, a protection entirely independent of CORS (easy to conflate). `CSRF_TRUSTED_ORIGINS` had no entry for the frontend's dev origin. Fixed by adding it.
+  5. Also hardened `App.logout()` to navigate unconditionally in a `finally` — it previously only redirected after a successful server call, so bug #1 additionally meant a failed logout silently stranded the user with no error and no way back.
+- Final round: all 7 verification checks passed clean — register → auto-login → logout (204) → re-login → full reload (session survives) → direct `/login` navigation while authenticated (redirected away) — zero console/CORS/CSRF errors.
+- Debate-thread is unchanged, still mock-data-only — wiring it to real orchestration needs new Django read endpoints that don't exist yet, tracked as a separate follow-up.
+
 ## 2026-07-18 (Temporal + LangGraph debate workflow, real observability)
 
 - Built the first real `DebateWorkflow` — a Temporal Workflow driving the sequential turn strategy (decision 2), with LangGraph as the per-turn reasoning layer (decision 3) via Temporal's official `temporalio[langgraph]` plugin. Each per-turn graph is a deliberately minimal single-node `StateGraph` calling OpenAI with structured output. Ends in a real `Verdict`, always produced even on `NO_CONSENSUS` (decision 8). New `orchestrator-worker` compose service (a Temporal Worker is a long-running poller, a different lifecycle from the request/response API process). New `POST /api/debates/{id}/start` endpoint is the trigger — decision 2's "FastAPI starts workflows."

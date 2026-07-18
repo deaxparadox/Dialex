@@ -1,1 +1,10 @@
-<router-outlet />
+<div class="app-shell">
+  @if (auth.isAuthenticated()) {
+    <div class="topbar">
+      <button type="button" (click)="logout()">Log out</button>
+    </div>
+  }
+  <div class="content">
+    <router-outlet />
+  </div>
+</div>

@@ -1,0 +1,27 @@
+<div class="shell">
+  <form class="card" [formGroup]="form" (ngSubmit)="onSubmit()">
+    <h1>Log in</h1>
+
+    <label>
+      <span>Username</span>
+      <input type="text" formControlName="username" autocomplete="username" />
+    </label>
+
+    <label>
+      <span>Password</span>
+      <input type="password" formControlName="password" autocomplete="current-password" />
+    </label>
+
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+
+    <button type="submit" [disabled]="form.invalid || submitting()">
+      {{ submitting() ? 'Logging in…' : 'Log in' }}
+    </button>
+
+    <p class="switch">
+      Need an account? <a routerLink="/register">Register</a>
+    </p>
+  </form>
+</div>

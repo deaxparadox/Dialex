@@ -12,6 +12,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+from corsheaders.defaults import default_headers
 
 # src/config/settings/base.py -> parents: settings, config, src
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -37,6 +38,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
     "apps.accounts",
@@ -48,6 +50,10 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # As high as possible, per django-cors-headers' own docs — before any
+    # middleware that can generate a response, so CORS headers land on
+    # every response including error ones.
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -114,3 +120,26 @@ REFRESH_COOKIE_PATH = "/api/auth/refresh/"
 # endpoints.
 CSRF_COOKIE_NAME = "XSRF-TOKEN"
 CSRF_HEADER_NAME = "HTTP_X_XSRF_TOKEN"
+
+# CsrfViewMiddleware's Origin check is separate from — and unaffected by —
+# CORS_ALLOWED_ORIGINS above (CORS and CSRF are independent protections in
+# Django); caught via real browser verification as a 403 "Origin checking
+# failed" on every logout/refresh call, distinct from the CORS preflight
+# issue CORS_ALLOW_HEADERS fixed. Scheme is required (bare hostnames aren't
+# valid here, unlike CORS_ALLOWED_ORIGINS).
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=["http://localhost:4200"])
+
+# spec 0006 — the Angular dev server (localhost:4200) and Django
+# (localhost:8000) are different origins. Narrow allow-list, not a
+# wildcard (CORS_ALLOW_ALL_ORIGINS is incompatible with credentials
+# anyway) — extend this list, don't loosen it, if more dev origins show up.
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=["http://localhost:4200"])
+CORS_ALLOW_CREDENTIALS = True
+
+# django-cors-headers' own default allow-list includes "x-csrftoken" (Django's
+# *default* CSRF header name) but not "x-xsrf-token" — the name this project
+# deliberately renamed CSRF_HEADER_NAME to, to match Angular's own defaults
+# (see above). Without this, the browser's CORS preflight rejects the header
+# before Django ever sees the request — caught via real browser verification
+# (a preflight failure, not visible in curl/Postman-style testing).
+CORS_ALLOW_HEADERS = [*default_headers, "x-xsrf-token"]

@@ -1,0 +1,41 @@
+<div class="shell">
+  <form class="card" [formGroup]="form" (ngSubmit)="onSubmit()">
+    <h1>Create an account</h1>
+
+    <label>
+      <span>Username</span>
+      <input type="text" formControlName="username" autocomplete="username" />
+    </label>
+
+    <label>
+      <span>Email</span>
+      <input type="email" formControlName="email" autocomplete="email" />
+    </label>
+
+    <label>
+      <span>Password</span>
+      <input type="password" formControlName="password" autocomplete="new-password" />
+    </label>
+
+    <label>
+      <span>Confirm password</span>
+      <input type="password" formControlName="confirmPassword" autocomplete="new-password" />
+    </label>
+
+    @if (form.errors?.['passwordMismatch'] && form.get('confirmPassword')?.touched) {
+      <p class="error">Passwords don't match.</p>
+    }
+
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+
+    <button type="submit" [disabled]="form.invalid || submitting()">
+      {{ submitting() ? 'Creating account…' : 'Create account' }}
+    </button>
+
+    <p class="switch">
+      Already have an account? <a routerLink="/login">Log in</a>
+    </p>
+  </form>
+</div>
