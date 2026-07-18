@@ -36,15 +36,15 @@ services:
       db:
         condition: service_healthy
 
-  fastapi:
-    build: ./fastapi_service
+  orchestrator:
+    build: ./orchestrator
     env_file:
-      - fastapi_service/.env
+      - orchestrator/.env
     environment:
       # Same override pattern as django — compose-internal hostname, not localhost.
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     volumes:
-      - ./fastapi_service/app:/app/app
+      - ./orchestrator/app:/app/app
     ports:
       # Host 8001 was already taken — mapped to 8010 instead (container
       # still listens on 8001 internally).

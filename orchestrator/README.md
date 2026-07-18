@@ -1,12 +1,12 @@
-# Dialex FastAPI service
+# Dialex orchestrator
 
-Orchestration front door — see [docs/adr/0003-fastapi-architecture.md](../docs/adr/0003-fastapi-architecture.md) and [docs/specs/0004-fastapi-scaffold.md](../docs/specs/0004-fastapi-scaffold.md).
+The orchestration front door, built with FastAPI — see [docs/adr/0003-fastapi-architecture.md](../docs/adr/0003-fastapi-architecture.md) and [docs/specs/0004-fastapi-scaffold.md](../docs/specs/0004-fastapi-scaffold.md). (Folder renamed from `fastapi_service/` — named by role, matching `frontend`/`backend`, not by the framework it happens to use.)
 
 This milestone: service skeleton, SQLAlchemy Core DB access, JWT verification only. **No Temporal, LangGraph, WebSocket, or Redis yet** — that's a later milestone.
 
 ## Running via docker-compose (recommended)
 
-From the repo root: `docker compose up -d fastapi` (brings up `db` too, via `depends_on`).
+From the repo root: `docker compose up -d orchestrator` (brings up `db` too, via `depends_on`).
 
 - Health check: http://localhost:8010/health
 - Authenticated example: http://localhost:8010/api/me (needs a Django-issued access token — `Authorization: Bearer <token>`, obtained from `POST http://localhost:8000/api/auth/login/`)
@@ -14,7 +14,7 @@ From the repo root: `docker compose up -d fastapi` (brings up `db` too, via `dep
 ## Running directly (without docker-compose)
 
 ```
-cd fastapi_service
+cd orchestrator
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # fill in real values — JWT_SIGNING_KEY must match Django's SIMPLE_JWT_SIGNING_KEY exactly

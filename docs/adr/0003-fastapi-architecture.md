@@ -1,6 +1,8 @@
 # ADR 0003 — FastAPI service architecture & scaffolding conventions
 
 > Written before scaffolding any FastAPI code, per this repo's CLAUDE.md. Unlike Django/Angular, FastAPI has no official generator — verified rather than assumed (`fastapi-cli` only serves an existing app via `fastapi dev`/`fastapi run`; the "official" [Full Stack FastAPI Template](https://github.com/fastapi/full-stack-fastapi-template) is a full React+SQLModel+Postgres template, not a fit for this service's SQLAlchemy-Core-only, no-ORM shape). Hand-authoring the structure below is legitimate under this repo's "scaffold with the framework's own generator" rule, which only applies when a generator exists.
+>
+> Folder renamed from `fastapi_service/` to `orchestrator/` after this ADR was written — same content below, named by role (matching `frontend`/`backend`) rather than by the framework it happens to use.
 
 ## Scope of this first milestone
 
@@ -18,7 +20,7 @@ Service skeleton, DB access, and JWT verification only — proving FastAPI can a
 ## Project structure — domain/module-based, not type-based
 
 ```
-fastapi_service/
+orchestrator/
   app/
     main.py              — FastAPI() instance, router includes
     core/

@@ -4,11 +4,11 @@
 
 ## What's being built
 
-1. The `fastapi_service/` project (hand-authored structure per ADR 0003 — no official generator exists).
+1. The `orchestrator/` project (hand-authored structure per ADR 0003 — no official generator exists).
 2. `GET /health` — trivial liveness check.
 3. `GET /api/me` — an authenticated example endpoint: verifies the JWT (shared signing key with Django, decision 13), reads the corresponding user's row from the Django-owned `accounts_user` table via SQLAlchemy Core, returns it. Proves the whole chain works: token verification + real cross-service DB read.
 4. `generated_tables.py` — `sqlacodegen` output against the real schema, committed for the first time (decision 9's artifact now has a home).
-5. A `fastapi` service added to `docker-compose.yml`, alongside the existing 6.
+5. An `orchestrator` service added to `docker-compose.yml`, alongside the existing 6.
 
 ## Explicitly out of scope (per ADR 0003)
 

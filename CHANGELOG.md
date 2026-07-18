@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-07-18 (rename fastapi_service → orchestrator)
+
+- Renamed `fastapi_service/` to `orchestrator/` — named by role (matching `frontend`/`backend`) rather than by the framework it happens to use. Updated `docker-compose.yml` (service name, build/volume paths), `docs/adr/0003-fastapi-architecture.md`, `docs/specs/0004-fastapi-scaffold.md`, and the service's own `README.md`. Older changelog entries below still say `fastapi_service/` deliberately — that's what was accurate as of that commit, not rewritten.
+- Re-verified after the rename: health check and the full JWT-verification + cross-service DB read chain both still work identically under the new name/paths.
+
 ## 2026-07-18 (FastAPI scaffold)
 
 - Scaffolded the FastAPI service (`fastapi_service/`) — no official generator exists for FastAPI (verified), so this is hand-authored, domain/module-based structure per [docs/adr/0003-fastapi-architecture.md](docs/adr/0003-fastapi-architecture.md). `fastapi==0.139.2`, `sqlalchemy==2.0.51` (Core, not ORM), `asyncpg==0.31.0`, `pydantic-settings` for fail-fast config, `pyjwt` for JWT verification.
