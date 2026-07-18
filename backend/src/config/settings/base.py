@@ -8,6 +8,7 @@ django.core.exceptions.ImproperlyConfigured at startup, not a silent
 fallback. See CLAUDE.md's "no silent fallback" rule.
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -37,6 +38,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "apps.accounts",
     "apps.cases",
     "apps.debates",
@@ -94,3 +96,21 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
 }
+
+SIMPLE_JWT = {
+    # 10 min — within the 5-15 min range locked in decision 13.
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=10),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "SIGNING_KEY": SIMPLE_JWT_SIGNING_KEY,
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+}
+
+REFRESH_COOKIE_NAME = "refresh_token"
+REFRESH_COOKIE_PATH = "/api/auth/refresh/"
+
+# Matches Angular's built-in HttpClient XSRF defaults (ADR 0001) so the
+# frontend needs no special CSRF configuration when it starts calling these
+# endpoints.
+CSRF_COOKIE_NAME = "XSRF-TOKEN"
+CSRF_HEADER_NAME = "HTTP_X_XSRF_TOKEN"

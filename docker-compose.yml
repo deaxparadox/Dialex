@@ -27,6 +27,9 @@ services:
       # Overrides backend/.env's localhost DATABASE_URL — inside compose,
       # Django reaches Postgres via the service name, not localhost.
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    volumes:
+      # Dev convenience: live code reload without rebuilding the image.
+      - ./backend/src:/app/src
     ports:
       - "8000:8000"
     depends_on:
