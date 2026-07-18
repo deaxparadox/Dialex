@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, ElementRef, afterRenderEffect, inject, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { ConsultationsApi } from '../data/consultations-api';
@@ -30,8 +30,21 @@ export class ConsultationChat {
   readonly approving = signal(false);
   readonly error = signal<string | null>(null);
 
+  private readonly messagesContainer = viewChild<ElementRef<HTMLDivElement>>('messagesContainer');
+
   constructor() {
     this.loadCaseTypes();
+
+    // Scrolls to the latest message whenever the transcript changes or the
+    // "Thinking…" row appears/disappears — afterRenderEffect (not a plain
+    // effect) since this reads/writes the DOM, not just reactive state
+    // (verified against Angular's own docs, not assumed).
+    afterRenderEffect(() => {
+      this.messages();
+      this.sending();
+      const el = this.messagesContainer()?.nativeElement;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
   }
 
   private async loadCaseTypes(): Promise<void> {

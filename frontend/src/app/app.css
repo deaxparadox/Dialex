@@ -13,14 +13,43 @@
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  justify-content: flex-end;
   padding: 10px 16px;
   background: var(--page);
+  border-bottom: 1px solid var(--line);
 }
 
-.topbar a,
-.topbar button {
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  border: none;
+  padding: 0;
+}
+
+.brand-logo {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
+.brand-name {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-nav a,
+.topbar-nav button {
   background: none;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -31,8 +60,8 @@
   text-decoration: none;
 }
 
-.topbar a:hover,
-.topbar button:hover {
+.topbar-nav a:hover,
+.topbar-nav button:hover {
   color: var(--ink);
   border-color: var(--ink-muted);
 }

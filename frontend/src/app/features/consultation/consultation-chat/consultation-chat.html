@@ -3,7 +3,7 @@
     <div class="chat-card">
       <h1>Consultation #{{ id }}</h1>
 
-      <div class="messages">
+      <div class="messages" #messagesContainer>
         @for (msg of messages(); track $index) {
           <div class="message" [class.message--user]="msg.speaker === 'user'">
             <span class="message-speaker">{{ msg.speaker === 'user' ? 'You' : 'Consultant' }}</span>
@@ -13,7 +13,9 @@
         @if (sending()) {
           <div class="message">
             <span class="message-speaker">Consultant</span>
-            <p class="message-content message-content--pending">Thinking&hellip;</p>
+            <p class="message-content message-content--pending typing-indicator">
+              <span></span><span></span><span></span>
+            </p>
           </div>
         }
       </div>

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-19 (consultation chat polish + app branding)
+
+- User-reported, screenshot-driven fixes to the consultation chat (spec 0010): the message list now auto-scrolls to the latest message on every new turn (`viewChild` + `afterRenderEffect`, Angular's current API for DOM work triggered by signal changes), and the "Thinking…" state is now an animated three-dot indicator instead of static italic text.
+- The app now has real branding: a small Dialex SVG mark (two overlapping circles in the app's own `--divergence`/`--convergence` colors — the same visual language already used in the debate-thread graph), used both as the browser favicon and, with a "Dialex" wordmark, on the left of a real navbar (previously right-aligned nav items only, no left-side content at all). `<title>` updated from the scaffolded default "Frontend" to "Dialex".
+- The consultation chat/picker cards now have a border + soft drop shadow so they read as floating panels against the page background rather than blending flat into it.
+- Verified in a real browser (Canary): confirmed auto-scroll lands exactly at the bottom (0px offset) after every message across a genuine 5-round OpenAI exchange, confirmed the typing indicator is 3 real staggered Web Animations (not a static placeholder), confirmed tab title/favicon, navbar branding, and card styling via computed styles/screenshots. Zero bugs found — pure polish on already-verified screens, not new architecture.
+
 ## 2026-07-19 (consultant/case-submission stage, frontend)
 
 - Built the frontend for spec 0009's consultation backend: a case-type picker, real-time chat with an AI consultant, and an approve button (`features/consultation/`, spec 0010). A real user can now go log in → "New case" → pick a case type → negotiate → approve → land on the freshly-created `/debates/:id`, entirely through the running app — the first time this whole path has been usable by an actual end user rather than curl.

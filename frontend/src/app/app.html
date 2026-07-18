@@ -1,8 +1,14 @@
 <div class="app-shell">
   @if (auth.isAuthenticated()) {
     <div class="topbar">
-      <a routerLink="/consultation">New case</a>
-      <button type="button" (click)="logout()">Log out</button>
+      <a class="brand" routerLink="/">
+        <img src="dialex-logo.svg" alt="" class="brand-logo" />
+        <span class="brand-name">Dialex</span>
+      </a>
+      <div class="topbar-nav">
+        <a routerLink="/consultation">New case</a>
+        <button type="button" (click)="logout()">Log out</button>
+      </div>
     </div>
   }
   <div class="content">
