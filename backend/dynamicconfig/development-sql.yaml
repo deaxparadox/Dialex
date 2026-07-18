@@ -1,0 +1,3 @@
+# Minimal dev dynamic config for the Temporal auto-setup server (decision 2a).
+# Intentionally empty — the auto-setup image just needs this file to exist
+# at the mounted path; defaults apply for everything not overridden here.
