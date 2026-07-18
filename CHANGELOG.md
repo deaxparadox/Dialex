@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-19 (app-wide panel styling + select/typing-bubble fixes)
+
+- Extended spec 0011's card border+shadow to every card-like container in the app via a shared `--panel-shadow` token (`styles.css`) — login/register cards and debate-thread's header/graph/reading panels now match consultation's chat/picker cards instead of only one screen having the treatment. The navbar itself now uses the same shadow (and a `--ground` background instead of `--page`) in place of a flat `border-bottom`, so it reads as floating above the content rather than flush/integrated with the page.
+- Fixed the "Thinking…" bubble stretching to a real message's width — it now hugs its 3 dots (`width: fit-content`).
+- Replaced the case-type `<select>`'s raw browser-default chrome with a custom theme-aware arrow (data-URI chevron, swapped per light/dark theme via the same `prefers-color-scheme`/`data-theme` pattern already used elsewhere in `styles.css`).
+- Verified in a real browser via computed-style inspection: border/box-shadow confirmed present (not `none`) on login, register, two real debate pages, and the navbar; the pending bubble measured a small 50px pill against a 414px message container; the select's `appearance: none` and custom `background-image` confirmed. Zero console errors, zero bugs.
+
 ## 2026-07-19 (consultation chat polish + app branding)
 
 - User-reported, screenshot-driven fixes to the consultation chat (spec 0010): the message list now auto-scrolls to the latest message on every new turn (`viewChild` + `afterRenderEffect`, Angular's current API for DOM work triggered by signal changes), and the "Thinking…" state is now an animated three-dot indicator instead of static italic text.

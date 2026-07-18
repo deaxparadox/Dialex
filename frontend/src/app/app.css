@@ -16,8 +16,10 @@
   justify-content: space-between;
   gap: 10px;
   padding: 10px 16px;
-  background: var(--page);
-  border-bottom: 1px solid var(--line);
+  background: var(--ground);
+  position: relative;
+  z-index: 1;
+  box-shadow: var(--panel-shadow);
 }
 
 .brand {

@@ -16,9 +16,11 @@
 .header-card {
   flex-shrink: 0;
   background: var(--ground);
+  border: 1px solid var(--line);
   border-radius: 14px;
   padding: 20px 20px 18px;
   margin-bottom: 20px;
+  box-shadow: var(--panel-shadow);
 }
 
 .topline {
@@ -112,10 +114,12 @@
   min-width: 0;
   overflow-y: auto;
   background: var(--ground);
+  border: 1px solid var(--line);
   border-radius: 14px;
   padding: 20px;
   display: flex;
   flex-direction: column;
+  box-shadow: var(--panel-shadow);
 }
 
 /* Panel is always in the DOM and transitions open/closed by width (and the gap
@@ -135,6 +139,10 @@
 .reading-panel.open {
   width: 320px;
   margin-left: 20px;
+  /* Only visible once actually open — a border/shadow on a zero-width
+     panel would show as a faint sliver even while "closed" (spec 0012). */
+  border: 1px solid var(--line);
+  box-shadow: var(--panel-shadow);
 }
 .reading-panel-inner {
   /* Fixed inner width so content doesn't reflow/wrap as the outer width animates —

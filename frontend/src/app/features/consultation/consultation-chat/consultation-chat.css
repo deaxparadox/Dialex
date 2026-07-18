@@ -22,7 +22,7 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.28), 0 2px 8px -2px rgba(0, 0, 0, 0.16);
+  box-shadow: var(--panel-shadow);
 }
 
 h1 {
@@ -54,6 +54,32 @@ input:focus,
 select:focus {
   outline: 2px solid var(--convergence);
   outline-offset: 1px;
+}
+
+/* Custom arrow replacing the browser-default select chrome (spec 0012).
+   The arrow's color is baked into the data-URI per theme (matching
+   --ink-muted's actual hex per theme, styles.css) rather than read from a
+   CSS var — a background-image can't reference custom properties. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 34px;
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 10px 6px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235B6070' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+@media (prefers-color-scheme: dark) {
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239BA1B4' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+}
+:root[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239BA1B4' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+:root[data-theme="light"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235B6070' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 button {
@@ -128,6 +154,9 @@ button:disabled {
 
 .message-content--pending {
   background: var(--page);
+  /* Hugs the 3 dots instead of stretching to the message column's full
+     width like a real text bubble would (spec 0012). */
+  width: fit-content;
 }
 
 .typing-indicator {
