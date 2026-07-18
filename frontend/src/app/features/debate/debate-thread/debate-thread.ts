@@ -1,4 +1,5 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 
 export interface DebateArgument {
   id: string;
@@ -91,15 +92,26 @@ const CONNECTORS: Connector[] = [{ fromId: 'g2', toId: 'r3' }];
   styleUrl: './debate-thread.css',
 })
 export class DebateThread {
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
+  // Theme deliberately stays local, not a query param (spec 0007) — it's a
+  // personal display preference, not "which view of this debate," and a
+  // shared link shouldn't force the sharer's theme on whoever opens it.
   readonly theme = signal<'light' | 'dark'>('light');
-  readonly mode = signal<'minimal' | 'detail'>('detail');
   readonly arguments = signal<DebateArgument[]>(MOCK_ARGUMENTS);
   readonly connectors = CONNECTORS;
 
   private readonly streamingArgument = computed(
     () => this.arguments().find((a) => a.isStreaming) ?? null,
   );
-  readonly selectedId = signal<string>(this.streamingArgument()?.id ?? MOCK_ARGUMENTS[0].id);
+
+  // mode/selectedId read their initial value from the URL (spec 0007),
+  // falling back to the pre-existing defaults when absent/invalid — must
+  // stay declared after `arguments`/`streamingArgument` above, since the
+  // read*Param() methods below depend on them.
+  readonly mode = signal<'minimal' | 'detail'>(this.readModeParam());
+  readonly selectedId = signal<string>(this.readSelectedParam());
   readonly selectedArgument = computed(
     () => this.arguments().find((a) => a.id === this.selectedId()) ?? null,
   );
@@ -117,6 +129,9 @@ export class DebateThread {
     } else {
       this.revealedText.set(this.selectedArgument()?.text ?? '');
     }
+    // Reflects the resolved defaults into the URL even when nothing was
+    // passed in — a bare `/` load ends up at e.g. `/?mode=detail&selected=c3`.
+    this.syncQueryParams();
   }
 
   setTheme(mode: 'light' | 'dark') {
@@ -126,11 +141,39 @@ export class DebateThread {
 
   setMode(mode: 'minimal' | 'detail') {
     this.mode.set(mode);
+    this.syncQueryParams();
   }
 
   select(arg: DebateArgument) {
     this.selectedId.set(arg.id);
     this.revealedText.set(arg.text);
+    this.syncQueryParams();
+  }
+
+  private readModeParam(): 'minimal' | 'detail' {
+    const param = this.route.snapshot.queryParamMap.get('mode');
+    return param === 'minimal' || param === 'detail' ? param : 'detail';
+  }
+
+  private readSelectedParam(): string {
+    const param = this.route.snapshot.queryParamMap.get('selected');
+    if (param && this.arguments().some((a) => a.id === param)) {
+      return param;
+    }
+    return this.streamingArgument()?.id ?? MOCK_ARGUMENTS[0].id;
+  }
+
+  /** `replaceUrl: true` is deliberate (spec 0007) — every node click or mode
+   * toggle updates the URL without pushing a new history entry, otherwise
+   * the back button would tediously step through every argument ever
+   * clicked instead of leaving the page. */
+  private syncQueryParams(): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { mode: this.mode(), selected: this.selectedId() },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   private revealText(arg: DebateArgument) {

@@ -46,7 +46,14 @@ export class Register {
       await this.auth.register(username, email, password);
       // Simpler UX than forcing a second manual login right after registering.
       await this.auth.login(username, password);
-      await this.router.navigateByUrl('/');
+      // replaceUrl: true — auto-login is a continuation of registering, not
+      // a page the user meant to navigate away from. Without this, /register
+      // sits underneath in history; hitting back re-enters it, guestGuard
+      // (correctly) bounces an authenticated user back off it, but the
+      // already-mounted route component doesn't re-run its constructor, so
+      // the address bar goes bare while the page silently shows stale
+      // content — a real bug found via real-browser verification (spec 0007).
+      await this.router.navigateByUrl('/', { replaceUrl: true });
     } catch (err) {
       if (err instanceof HttpErrorResponse && err.status === 400) {
         const detail = Object.values(err.error ?? {}).flat().join(' ');

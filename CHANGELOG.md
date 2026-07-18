@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-18 (debate-thread view state moves into the URL)
+
+- `mode` (Minimal/Detail) and the selected argument node on the debate-thread page (spec 0001) are now read from URL query params on load and written back via `replaceUrl` on every change (spec 0007) — a specific view is now shareable/bookmarkable/deep-linkable. `theme` deliberately stays local component state, not a query param: it's a personal display preference, not "which view of this debate," and a shared link shouldn't impose the sharer's theme on whoever opens it.
+- Verified against a real browser (Canary): defaults reflected into the URL on a bare load, clicking a node/toggling mode updates the right param without creating a new back-button-reachable history entry per click, a fresh navigation directly to a URL with query params loads straight into that state, and malformed query params fall back to sane defaults instead of crashing or rendering blank.
+- Found and fixed a real bug this work exposed (a pre-existing gap from the auth-wiring milestone, not caused by this change): `login.ts`/`register.ts` navigated to `/` after auth without `replaceUrl`, leaving `/login`/`/register` as real history entries underneath. A back-press could re-enter one of them, get correctly bounced by `guestGuard`, but the already-mounted `DebateThread` route component doesn't re-run its constructor on that same-component redirect — so the address bar went bare while the page silently kept stale content. Fixed by adding `replaceUrl: true` to both auth navigations; re-verified clean.
+
 ## 2026-07-18 (frontend wired to real Django auth)
 
 - Built real auth for the Angular app (spec 0006, governed by the already-existing ADR 0001 — no new architecture decisions needed): `Auth` service using Angular 22's new `@Service()` decorator (root-scoped by default, `inject()`-only — verified this is a genuine new Angular 22 feature, not a broken generator default, before adopting it), a functional HTTP interceptor (JWT attach + de-duplicated 401 refresh-retry), `authGuard`/`guestGuard` route guards, and login/register screens styled with the already-validated `--page`/`--ground` token system rather than a fresh design cycle.

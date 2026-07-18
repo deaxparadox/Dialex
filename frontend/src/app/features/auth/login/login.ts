@@ -34,7 +34,11 @@ export class Login {
     try {
       await this.auth.login(username, password);
       const redirect = this.route.snapshot.queryParamMap.get('redirect') ?? '/';
-      await this.router.navigateByUrl(redirect);
+      // replaceUrl: true — same reasoning as register.ts: /login shouldn't
+      // sit in history underneath an authenticated page (guestGuard would
+      // just bounce a back-navigation off it anyway, with the same stale-
+      // content risk found via real-browser verification, spec 0007).
+      await this.router.navigateByUrl(redirect, { replaceUrl: true });
     } catch {
       this.error.set('Incorrect username or password.');
     } finally {
