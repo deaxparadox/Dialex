@@ -1,7 +1,26 @@
+import uuid
+
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import User
+
+
+class SessionTaggingTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """Mints a `session_id` claim on the refresh token at login, so every
+    service that already decodes the JWT (Django, the orchestrator) can
+    correlate logs/traces to a login session — this system has no
+    server-side Django session to reuse otherwise (decision 13 is stateless
+    JWT). Survives refresh rotation for free: simplejwt's rotation mutates
+    the same token's jti/exp/iat in place rather than re-minting from
+    scratch, so a claim set here persists automatically."""
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token["session_id"] = str(uuid.uuid4())
+        return token
 
 
 class RegisterSerializer(serializers.ModelSerializer):

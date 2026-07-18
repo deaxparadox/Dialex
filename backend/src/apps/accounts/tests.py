@@ -1,9 +1,16 @@
+import jwt
 from django.conf import settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
 from .models import User
+
+
+def _decode(token):
+    # Verification isn't the point here — these tests just need to read
+    # claims back out of a token this same test issued.
+    return jwt.decode(token, options={"verify_signature": False})
 
 
 class AuthFlowTests(APITestCase):
@@ -76,6 +83,25 @@ class AuthFlowTests(APITestCase):
         self.assertIn("access", response.data)
         new_refresh = response.cookies[settings.REFRESH_COOKIE_NAME].value
         self.assertNotEqual(old_refresh, new_refresh)
+
+    def test_login_tags_tokens_with_session_id_and_refresh_preserves_it(self):
+        csrf_token = self._get_csrf_token()
+        login_response = self.client.post(
+            reverse("auth-login"), {"username": "alice", "password": "a-Reasonably-Str0ng-pw!"}
+        )
+        access_session_id = _decode(login_response.data["access"])["session_id"]
+        refresh_session_id = _decode(
+            self.client.cookies[settings.REFRESH_COOKIE_NAME].value
+        )["session_id"]
+        self.assertEqual(access_session_id, refresh_session_id)
+
+        refresh_response = self.client.post(reverse("auth-refresh"), HTTP_X_XSRF_TOKEN=csrf_token)
+        rotated_access_session_id = _decode(refresh_response.data["access"])["session_id"]
+        rotated_refresh_session_id = _decode(
+            refresh_response.cookies[settings.REFRESH_COOKIE_NAME].value
+        )["session_id"]
+        self.assertEqual(rotated_access_session_id, access_session_id)
+        self.assertEqual(rotated_refresh_session_id, access_session_id)
 
     def test_refresh_missing_cookie_returns_401(self):
         csrf_token = self._get_csrf_token()

@@ -8,9 +8,16 @@ https://docs.djangoproject.com/en/5.2/howto/deployment/wsgi/
 """
 
 import os
-
-from django.core.wsgi import get_wsgi_application
+from pathlib import Path
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.development')
+
+# Instrument before the app is built, per spec 0005 — DjangoInstrumentor
+# needs to patch request handling before the first request is served.
+from config.observability import setup_observability  # noqa: E402
+
+setup_observability("dialex-django", Path(__file__).resolve().parent.parent.parent / "logs" / "django.log")
+
+from django.core.wsgi import get_wsgi_application  # noqa: E402
 
 application = get_wsgi_application()

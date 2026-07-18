@@ -53,6 +53,23 @@ services:
       db:
         condition: service_healthy
 
+  orchestrator-worker:
+    build: ./orchestrator
+    command: python -m app.worker
+    env_file:
+      - orchestrator/.env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    volumes:
+      - ./orchestrator/app:/app/app
+    # No host port — a Temporal Worker polls outbound for work, it never
+    # accepts inbound connections (spec 0005).
+    depends_on:
+      db:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+
   temporal-postgresql:
     image: postgres:${POSTGRESQL_VERSION}
     environment:
