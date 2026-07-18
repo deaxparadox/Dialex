@@ -1,0 +1,77 @@
+<div class="shell">
+  @if (sessionId(); as id) {
+    <div class="chat-card">
+      <h1>Consultation #{{ id }}</h1>
+
+      <div class="messages">
+        @for (msg of messages(); track $index) {
+          <div class="message" [class.message--user]="msg.speaker === 'user'">
+            <span class="message-speaker">{{ msg.speaker === 'user' ? 'You' : 'Consultant' }}</span>
+            <p class="message-content">{{ msg.content }}</p>
+          </div>
+        }
+        @if (sending()) {
+          <div class="message">
+            <span class="message-speaker">Consultant</span>
+            <p class="message-content message-content--pending">Thinking&hellip;</p>
+          </div>
+        }
+      </div>
+
+      @if (error()) {
+        <p class="error">{{ error() }}</p>
+      }
+
+      <div class="composer">
+        <input
+          type="text"
+          placeholder="Type your message…"
+          [value]="draftText()"
+          (input)="onDraftInput($any($event.target).value)"
+          (keydown.enter)="sendMessage()"
+          [disabled]="sending() || approving()"
+        />
+        <button type="button" (click)="sendMessage()" [disabled]="sending() || approving() || !draftText().trim()">
+          Send
+        </button>
+      </div>
+
+      <button
+        type="button"
+        class="approve-button"
+        (click)="approve()"
+        [disabled]="!readyToFinalize() || approving()"
+      >
+        {{ approving() ? 'Approving…' : 'Approve and start debate' }}
+      </button>
+    </div>
+  } @else {
+    <div class="picker-card">
+      <h1>Start a new case</h1>
+
+      @if (loadingCaseTypes()) {
+        <p class="state-message">Loading case types&hellip;</p>
+      } @else {
+        <label>
+          <span>Case type</span>
+          <select
+            [value]="selectedCaseType()"
+            (change)="onSelectCaseType($any($event.target).value)"
+          >
+            @for (type of caseTypes(); track type) {
+              <option [value]="type">{{ type }}</option>
+            }
+          </select>
+        </label>
+
+        @if (error()) {
+          <p class="error">{{ error() }}</p>
+        }
+
+        <button type="button" (click)="startConsultation()" [disabled]="!selectedCaseType()">
+          Start consultation
+        </button>
+      }
+    </div>
+  }
+</div>

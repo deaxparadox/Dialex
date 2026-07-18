@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { DebateThread } from './features/debate/debate-thread/debate-thread';
+import { ConsultationChat } from './features/consultation/consultation-chat/consultation-chat';
 import { Login } from './features/auth/login/login';
 import { Register } from './features/auth/register/register';
 import { authGuard, guestGuard } from './core/auth/auth-guard';
@@ -11,5 +12,8 @@ export const routes: Routes = [
   // DebateThread's own empty state (no :id param) rather than either
   // blocking this milestone on a list screen or pointing '' at nothing.
   { path: 'debates/:id', component: DebateThread, canActivate: [authGuard] },
+  // Additive entry point (spec 0010) — a direct link/nav button, same
+  // "no list screen yet" acceptance already made for debates.
+  { path: 'consultation', component: ConsultationChat, canActivate: [authGuard] },
   { path: '', component: DebateThread, canActivate: [authGuard] },
 ];

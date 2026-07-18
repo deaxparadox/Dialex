@@ -12,11 +12,14 @@
 .topbar {
   flex-shrink: 0;
   display: flex;
+  align-items: center;
+  gap: 10px;
   justify-content: flex-end;
   padding: 10px 16px;
   background: var(--page);
 }
 
+.topbar a,
 .topbar button {
   background: none;
   border: 1px solid var(--line);
@@ -25,8 +28,10 @@
   color: var(--ink-muted);
   font-size: 13px;
   cursor: pointer;
+  text-decoration: none;
 }
 
+.topbar a:hover,
 .topbar button:hover {
   color: var(--ink);
   border-color: var(--ink-muted);

@@ -1,6 +1,7 @@
 <div class="app-shell">
   @if (auth.isAuthenticated()) {
     <div class="topbar">
+      <a routerLink="/consultation">New case</a>
       <button type="button" (click)="logout()">Log out</button>
     </div>
   }

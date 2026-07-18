@@ -1,7 +1,7 @@
 from rest_framework import generics
 
-from .models import Case
-from .serializers import CaseSerializer
+from .models import Case, CaseTypeConfig
+from .serializers import CaseSerializer, CaseTypeConfigSerializer
 
 
 class CaseListView(generics.ListAPIView):
@@ -20,3 +20,11 @@ class CaseDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         return Case.objects.filter(created_by=self.request.user)
+
+
+class CaseTypeConfigListView(generics.ListAPIView):
+    """Not ownership-scoped — shared config, not user data (same reasoning
+    as `/api/personas/`'s existing plan, spec 0010)."""
+
+    serializer_class = CaseTypeConfigSerializer
+    queryset = CaseTypeConfig.objects.all().order_by("type")

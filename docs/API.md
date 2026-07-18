@@ -41,7 +41,7 @@ All endpoints below require a valid access token unless noted. List endpoints ar
 ### Config & personas
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/case-type-configs/` | Read-only for the frontend: `position_options`, `decision_options`, `research_guardrail_prompt` per case type. Write access is admin-only (Django admin). |
+| `GET` | `/api/case-type-configs/` | **Built and verified (spec 0010).** Returns `type` only — kept minimal for the case-type picker; `position_options`/`decision_options`/`research_guardrail_prompt` aren't exposed here since no UI needs them yet (unlike the plan below, not ownership-scoped — shared config). Write access is admin-only (Django admin). |
 | `GET` | `/api/personas/` | Read-only list of `AgentPersona` (name, role, role_description) — no `system_prompt`/`model_config` exposed to non-admin clients. Write access is admin-only. |
 
 ### Notifications
@@ -54,7 +54,7 @@ All endpoints below require a valid access token unless noted. List endpoints ar
 
 ### Consultation
 
-**Built and verified (ADR 0005/spec 0009) — differs from this doc's original plan below.** No WebSocket/streaming: turns are plain synchronous HTTP request/response, backed by a Temporal `ConsultationWorkflow` via `workflow.update` (not signal+poll) — chosen deliberately over building Redis/WebSocket streaming (decision 12) for chat specifically; see ADR 0005 decisions 2–3. Backend only — no frontend UI exists yet (a separate follow-up spec).
+**Built and verified end to end (ADR 0005/spec 0009 backend, spec 0010 frontend) — differs from this doc's original plan below.** No WebSocket/streaming: turns are plain synchronous HTTP request/response, backed by a Temporal `ConsultationWorkflow` via `workflow.update` (not signal+poll) — chosen deliberately over building Redis/WebSocket streaming (decision 12) for chat specifically; see ADR 0005 decisions 2–3. A real user can now drive this whole flow through the running app (`/consultation` → chat → `/debates/:id`), not just via curl.
 
 | Method | Path | Notes |
 |---|---|---|

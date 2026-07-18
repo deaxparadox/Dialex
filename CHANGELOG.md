@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-07-19 (consultant/case-submission stage, frontend)
+
+- Built the frontend for spec 0009's consultation backend: a case-type picker, real-time chat with an AI consultant, and an approve button (`features/consultation/`, spec 0010). A real user can now go log in → "New case" → pick a case type → negotiate → approve → land on the freshly-created `/debates/:id`, entirely through the running app — the first time this whole path has been usable by an actual end user rather than curl.
+- One small backend addition to support the picker: `GET /api/case-type-configs/` (Django, top-level per the already-planned API contract, not nested under `/api/cases/`) — deliberately minimal, returning just `type` since no UI needs `position_options`/`decision_options`/`research_guardrail_prompt` yet.
+- Approve is disabled client-side until the consultant signals `ready_to_finalize` — the backend already enforces this (a `400` otherwise, spec 0009), but a disabled button is a better UX signal than letting a user hit that error.
+- Verified in a real browser (Canary): login, the full picker → chat → approve flow with genuine OpenAI round trips (the consultant needed five back-and-forth turns before finalizing even when told plainly to — its own conversational behavior, not a bug), and the resulting debate page rendering the real, just-discussed case. **Zero app-level bugs found this pass** — worth stating plainly rather than manufacturing one: every one of the five milestones before this found something real during verification, and this is the first clean result, not a lower verification bar.
+- Explicitly out of scope, unchanged: recovering an in-progress conversation after a page reload (no turn-history `GET` endpoint exists), editing a proposed payload before approving, live token streaming for chat, a "my consultations" list screen.
+
 ## 2026-07-18 (consultant/case-submission stage, backend)
 
 - Built the backend for the consultant stage (ADR 0005/spec 0009): a new `ConsultationWorkflow` (Temporal) — the first long-running, externally-signaled workflow in this codebase, deliberately different from `DebateWorkflow`'s fire-and-forget shape since a consultation is a live dialogue, not an unattended background process. Turns are delivered via `@workflow.update` handlers (`submit_message`, `approve`), not signal+poll: the frontend/curl caller gets a normal synchronous request/response, backed by Temporal's retry/durability guarantees underneath, without needing WebSocket/Redis infrastructure.
