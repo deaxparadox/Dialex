@@ -1,0 +1,2 @@
+sqlacodegen==4.0.4
+psycopg2-binary

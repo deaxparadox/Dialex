@@ -36,6 +36,23 @@ services:
       db:
         condition: service_healthy
 
+  fastapi:
+    build: ./fastapi_service
+    env_file:
+      - fastapi_service/.env
+    environment:
+      # Same override pattern as django — compose-internal hostname, not localhost.
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    volumes:
+      - ./fastapi_service/app:/app/app
+    ports:
+      # Host 8001 was already taken — mapped to 8010 instead (container
+      # still listens on 8001 internally).
+      - "8010:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+
   temporal-postgresql:
     image: postgres:${POSTGRESQL_VERSION}
     environment:

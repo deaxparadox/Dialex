@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-07-18 (FastAPI scaffold)
+
+- Scaffolded the FastAPI service (`fastapi_service/`) — no official generator exists for FastAPI (verified), so this is hand-authored, domain/module-based structure per [docs/adr/0003-fastapi-architecture.md](docs/adr/0003-fastapi-architecture.md). `fastapi==0.139.2`, `sqlalchemy==2.0.51` (Core, not ORM), `asyncpg==0.31.0`, `pydantic-settings` for fail-fast config, `pyjwt` for JWT verification.
+- Scope deliberately narrow this milestone: service skeleton, DB access, JWT verification only. Temporal, LangGraph, WebSocket, and Redis are a later milestone — see [docs/specs/0004-fastapi-scaffold.md](docs/specs/0004-fastapi-scaffold.md).
+- `sqlacodegen` output (decision 9) committed for the first time as `app/core/generated_tables.py` — the earlier smoke-test (spec 0003) had no home to put it in; this service is that home. The permanent CI-diff enforcement isn't set up yet (no CI pipeline exists in this repo at all) — tracked as a real gap in the ADR, not silently dropped.
+- `GET /api/me` verified end to end with a real Django-issued access token: no token → 401, valid token → 200 with the correct user read live from the Django-owned `accounts_user` table via SQLAlchemy Core, tampered token → 401. Confirms decision 13's "FastAPI verifies independently, no callback to Django" actually works, not just in theory.
+- Added as a 7th docker-compose service; host port 8010 (8001 was already taken on this dev machine, same story as the other remapped ports).
+
 ## 2026-07-18 (auth endpoints)
 
 - Implemented `/api/auth/{register,login,refresh,logout}/` per decisions 13/13a — see [docs/specs/0003-auth-endpoints.md](docs/specs/0003-auth-endpoints.md). Hand-rolled cookie handling on `djangorestframework-simplejwt` (chose this over adding `dj-rest-auth` as a new dependency, given this project's learning focus and unconfirmed exact-version compatibility).
