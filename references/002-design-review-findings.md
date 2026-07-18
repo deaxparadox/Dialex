@@ -238,7 +238,7 @@ The DB-access pattern (Django owns migrations, FastAPI reads/writes via SQLAlche
 10. ~~Design the debate consultant's data model and pre-`OPEN` clarification lifecycle stage~~ — **locked (`ConsultationSession`/`ConsultationTurn`, `AgentPersona.role`, universal fast-path/full-negotiation), see decision 10 above.**
 11. ~~Design the preparation/research round~~ — **locked (independent per-agent research, real web search, `ResearchFinding` stored and citable via `Argument.cites_research_finding`), see decision 11 above.**
 12. ~~Design the `HumanReview` record's fields~~ — **locked (`comment` + button-selected `final_decision` via `CaseTypeConfig`), see decisions 8 and 5c above.**
-13. ~~Real-time streaming for agent arguments and research progress~~ — **locked (Temporal Workflow Streams, no Redis), see decision 12 above.**
+13. ~~Real-time streaming for agent arguments and research progress~~ — **locked (Redis pub/sub, not Temporal Workflow Streams), see decision 12 above.**
 14. ~~Authentication approach~~ — **locked (access token in memory, refresh token in HttpOnly/Secure/SameSite cookie, rotation), see decision 13 above.**
 15. ~~Research query safety/privacy guardrail~~ — **locked (`CaseTypeConfig.research_guardrail_prompt`, prompt-level for v1), see decision 14 above.**
 16. ~~What `FAILED` means and who finds out~~ — **locked (always notifies, via decisions 16-17), see decision 15 above.**

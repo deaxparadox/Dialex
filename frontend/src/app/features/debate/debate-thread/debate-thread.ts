@@ -1,7 +1,9 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { Auth } from '../../../core/auth/auth';
 import { ApiArgument, ApiCase, ApiDebate, DebatesApi } from '../data/debates-api';
+import { DebateStream } from '../data/debate-stream';
 
 export interface DebateArgument {
   id: string;
@@ -15,7 +17,6 @@ export interface DebateArgument {
   text: string;
   respondsToId: string | null;
   respondsToLabel: string | null;
-  isStreaming: boolean;
 }
 
 interface Connector {
@@ -43,7 +44,6 @@ function mapArgument(api: ApiArgument): DebateArgument {
     text: api.content,
     respondsToId: api.responds_to_id !== null ? String(api.responds_to_id) : null,
     respondsToLabel: null, // filled in once the full list is known — see fillRespondsToLabels
-    isStreaming: false, // no live-in-progress concept without decision 12's streaming (spec 0008)
   };
 }
 
@@ -67,6 +67,8 @@ export class DebateThread {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(DebatesApi);
+  private readonly auth = inject(Auth);
+  private readonly debateStream = inject(DebateStream);
   private readonly destroyRef = inject(DestroyRef);
 
   // Theme deliberately stays local, not a query param (spec 0007) — it's a
@@ -99,6 +101,7 @@ export class DebateThread {
   readonly starting = signal(false);
   readonly startError = signal<string | null>(null);
   private pollHandle: ReturnType<typeof setInterval> | null = null;
+  private streaming = false;
 
   constructor() {
     const idParam = this.route.snapshot.paramMap.get('id');
@@ -108,7 +111,10 @@ export class DebateThread {
       return;
     }
     void this.loadDebate(Number(idParam));
-    this.destroyRef.onDestroy(() => this.stopPolling());
+    this.destroyRef.onDestroy(() => {
+      this.closeStream();
+      this.stopPolling();
+    });
   }
 
   private async loadDebate(debateId: number, preserveSelection = false): Promise<void> {
@@ -148,8 +154,9 @@ export class DebateThread {
       // verification — a chained short-poll trace with zero DOM change over
       // 66s while the backend had already reached NO_CONSENSUS).
       if (this.isActive()) {
-        this.startPolling(debateId);
+        this.openStream(debateId);
       } else {
+        this.closeStream();
         this.stopPolling();
       }
     } catch {
@@ -176,6 +183,40 @@ export class DebateThread {
     }
   }
 
+  /** Primary live-update path (spec 0014) — instant push instead of the
+   * `startPolling` fallback below. */
+  private openStream(debateId: number): void {
+    if (this.streaming) return;
+    const token = this.auth.getAccessToken();
+    if (!token) {
+      // Shouldn't happen — the route is already auth-guarded — but fail
+      // visibly rather than silently leaving the view with no live updates.
+      console.error(`No access token available to open the debate stream for debate ${debateId}`);
+      this.startPolling(debateId);
+      return;
+    }
+    this.streaming = true;
+    this.debateStream.connect(
+      debateId,
+      token,
+      () => void this.loadDebate(debateId, true),
+      () => {
+        this.streaming = false;
+        console.warn(`WebSocket dropped for debate ${debateId}, falling back to polling`);
+        this.startPolling(debateId);
+      },
+    );
+  }
+
+  private closeStream(): void {
+    if (this.streaming) {
+      this.debateStream.disconnect();
+      this.streaming = false;
+    }
+  }
+
+  /** Fallback only — used when the WebSocket can't be opened or drops
+   * unexpectedly (spec 0014), not the primary update path anymore. */
   private startPolling(debateId: number): void {
     if (this.pollHandle) return;
     this.pollHandle = setInterval(() => void this.loadDebate(debateId, true), POLL_INTERVAL_MS);
@@ -239,7 +280,6 @@ export class DebateThread {
   }
 
   colorFor(arg: DebateArgument): string {
-    if (arg.isStreaming) return 'var(--ink-faint)';
     return arg.leaning >= 0.5 ? 'var(--convergence)' : 'var(--divergence)';
   }
 

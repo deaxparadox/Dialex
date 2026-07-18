@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-19 (debate streaming, frontend)
+
+- Wired `debate-thread` to the real `WS /api/debates/{id}/stream` (spec 0013/ADR 0006) in place of the 4s polling it used before: a new `DebateStream` service (`features/debate/data/debate-stream.ts`) opens a native `WebSocket` with the access token riding the subprotocol field, and any incoming message triggers the same full `loadDebate()` refresh a poll tick used to — both event types (`argument_complete`/`status_change`) only carry an id/status, not a payload, so a full re-fetch is the correct minimal reaction, not a shortcut.
+- Removed the dead `isStreaming` field (`DebateArgument`, its template binding, and the now-unused `.streaming` CSS rule) — ADR 0006 flagged this explicitly as something this spec had to address directly: under complete-event push, an argument is either fully persisted or not in the list yet, so there's no partial/mid-flight state left for the field to represent, and nothing had ever set it `true`.
+- Polling isn't deleted — it's kept as an explicit, visible fallback (`console.warn` logged) for an unexpected WebSocket drop, so a network blip or an access token expiring mid-debate doesn't strand the view on stale data with no signal. No reconnect-with-backoff logic; out of scope.
+- Verified in a real browser (Canary) across 4 real debates end to end: the WebSocket connection to `ws://localhost:8010/api/debates/{id}/stream` opened within ~150-300ms of the page loading (before "Start debate" was even clicked), a full 6-argument, 3-round debate completed in ~16.5s with status/argument updates rendering at a granularity far tighter than the old 4s poll window, zero console errors, and reloading an already-finished debate opened no new WebSocket connection (confirms the component correctly recognizes terminal state rather than reconnecting needlessly). Also ran the existing Angular test suite (18 tests, 2 new) — all pass. See [docs/specs/0014-debate-streaming-frontend.md](docs/specs/0014-debate-streaming-frontend.md).
+
 ## 2026-07-19 (Redis pub/sub + WebSocket live debate streaming, backend)
 
 - Built the backend for decision 12/13a: `WS /api/debates/{id}/stream` pushes live events (argument/status changes) the instant they happen, replacing the up-to-4-second wait `debate-thread`'s polling has today. First WebSocket endpoint and first real Redis usage in the app — both were previously provisioned (the container, the design docs) but idle.

@@ -262,7 +262,6 @@
   fill: var(--ink-faint);
   text-anchor: middle;
 }
-.streaming .node-ring { stroke-dasharray: 4 3; }
 .node-hit { cursor: pointer; }
 .node-hit:focus-visible { outline: 2px solid var(--judge); outline-offset: 3px; }
 

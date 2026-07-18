@@ -74,7 +74,6 @@
             @for (arg of arguments(); track arg.id) {
               <g
                 class="node-hit"
-                [class.streaming]="arg.isStreaming"
                 [class.selected]="arg.id === selectedId()"
                 tabindex="0"
                 role="button"

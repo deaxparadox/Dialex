@@ -6,6 +6,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { DebateThread } from './debate-thread';
 import { ApiArgument, ApiCase, ApiDebate } from '../data/debates-api';
 import { environment } from '../../../../environments/environment';
+import { Auth } from '../../../core/auth/auth';
+import { DebateStream } from '../data/debate-stream';
 
 const MOCK_CASE: ApiCase = {
   id: 7,
@@ -37,6 +39,8 @@ const MOCK_DEBATE: ApiDebate = {
   judged_at: '2026-07-18T00:05:00Z',
 };
 
+const MOCK_ACTIVE_DEBATE: ApiDebate = { ...MOCK_DEBATE, status: 'ARGUING', verdict: null };
+
 const MOCK_ARGUMENTS: ApiArgument[] = [
   {
     id: 1,
@@ -64,7 +68,11 @@ const MOCK_ARGUMENTS: ApiArgument[] = [
   },
 ];
 
-function configureWithRoute(routeParams: Record<string, string>, queryParams: Record<string, string> = {}): void {
+function configureWithRoute(
+  routeParams: Record<string, string>,
+  queryParams: Record<string, string> = {},
+  extraProviders: unknown[] = [],
+): void {
   TestBed.configureTestingModule({
     imports: [DebateThread],
     providers: [
@@ -80,6 +88,7 @@ function configureWithRoute(routeParams: Record<string, string>, queryParams: Re
           },
         },
       },
+      ...extraProviders,
     ],
   });
 }
@@ -120,6 +129,62 @@ describe('DebateThread', () => {
     expect(component.arguments()[1].respondsToLabel).toBe('Responds to Agent R, round 1');
 
     httpMock.verify();
+  });
+
+  it('opens a WebSocket stream (not polling) once an active debate loads (spec 0014)', async () => {
+    const fakeStream = { connect: vi.fn(), disconnect: vi.fn() };
+    configureWithRoute({ id: '3' }, {}, [
+      { provide: DebateStream, useValue: fakeStream },
+      { provide: Auth, useValue: { getAccessToken: () => 'test-token' } },
+    ]);
+    const fixture = TestBed.createComponent(DebateThread);
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    await fixture.whenStable();
+    httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/`).flush(MOCK_ACTIVE_DEBATE);
+    httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/arguments/`).flush(MOCK_ARGUMENTS);
+    await Promise.resolve();
+    await Promise.resolve();
+    httpMock.expectOne(`${environment.djangoApiBase}/api/cases/7/`).flush(MOCK_CASE);
+    await fixture.whenStable();
+
+    expect(fakeStream.connect).toHaveBeenCalledTimes(1);
+    expect(fakeStream.connect).toHaveBeenCalledWith(3, 'test-token', expect.any(Function), expect.any(Function));
+
+    httpMock.verify();
+  });
+
+  it('re-fetches on a stream message, and falls back to polling with a visible warning on an unexpected drop', async () => {
+    const fakeStream = { connect: vi.fn(), disconnect: vi.fn() };
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    configureWithRoute({ id: '3' }, {}, [
+      { provide: DebateStream, useValue: fakeStream },
+      { provide: Auth, useValue: { getAccessToken: () => 'test-token' } },
+    ]);
+    const fixture = TestBed.createComponent(DebateThread);
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    await fixture.whenStable();
+    httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/`).flush(MOCK_ACTIVE_DEBATE);
+    httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/arguments/`).flush(MOCK_ARGUMENTS);
+    await Promise.resolve();
+    await Promise.resolve();
+    httpMock.expectOne(`${environment.djangoApiBase}/api/cases/7/`).flush(MOCK_CASE);
+    await fixture.whenStable();
+
+    const [, , onMessage, onUnexpectedClose] = fakeStream.connect.mock.calls[0];
+
+    onMessage();
+    httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/`).flush(MOCK_ACTIVE_DEBATE);
+    httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/arguments/`).flush(MOCK_ARGUMENTS);
+    await fixture.whenStable();
+
+    onUnexpectedClose();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('falling back to polling'));
+
+    fixture.destroy(); // clears the polling interval the fallback just started
+    httpMock.verify();
+    warnSpy.mockRestore();
   });
 
   it('shows the not-found state on a 404', async () => {
