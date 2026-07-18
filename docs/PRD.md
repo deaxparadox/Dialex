@@ -105,14 +105,21 @@ A system where multiple LLM agents, each with a distinct persona, debate a decis
 - **Angular** — frontend; structured logging shipped to the backend, not stored client-side.
 - **OpenTelemetry** — one consistent observability system across Django, FastAPI, and Temporal; local rotating files today, swappable to an enterprise backend later with no code changes.
 
-## 9. Known limitations & accepted risks (carried forward deliberately, not oversights)
+## 9. Deferred for core-first sequencing (tracked backlog, not permanent)
 
-- Open self-registration with no email verification — anyone can register with an unverified/unowned email address; deferred deliberately, not an oversight.
-- Research query safety is a prompt-level guardrail, not a hard technical block.
-- Convergence detection can misjudge free-text position changes as real when they're just rewording (research debate case type) — bounded by mandatory human review.
-- Redis general-notification delivery is best-effort/live-only; the persisted `Notification` record is the actual durability guarantee.
-- No cost controls on LLM/search spend yet.
-- Temporal Workflow Streams was considered and rejected in favor of Redis specifically for maturity, since this is public-facing (decision 12).
+These exist because the priority right now is getting the core system running end to end — not because the underlying principle is rejected. Each is real work still owed, tracked here so it doesn't get forgotten once the core is up. See [docs/principles/](./principles/) for the standards these gaps are measured against, and check here before treating any of them as a new finding during an audit.
+
+- Open self-registration with no email verification — anyone can register with an unverified/unowned email address.
+- Research query safety is a prompt-level guardrail, not a hard technical block against agents seeing/searching identifying case data.
+- No cost/rate-limiting controls on LLM or search spend.
+- Convergence detection can misjudge free-text position changes as real when they're just rewording (`research_debate` case type) — a fix was scoped (consultant-negotiated candidate answers, `references/002` decision 5) but set aside for v1; bounded in the meantime by mandatory human review, not fixed.
+
+## 9a. Permanent design trade-offs (by design — not backlog, not expected to change)
+
+Different from the above: these aren't unfinished, they're the actual chosen architecture.
+
+- Redis general-notification delivery is best-effort/live-only *by design* — the persisted `Notification` record is the real durability guarantee, live push is just the instant-nudge layer on top (decision 17).
+- Temporal Workflow Streams was evaluated and deliberately rejected in favor of Redis, specifically for maturity since this is public-facing (decision 12) — a settled choice, not a gap to revisit later.
 
 ## 10. Open items — not yet written down (tracked, not blocking this PRD)
 
