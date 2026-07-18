@@ -7,14 +7,31 @@ Every activity binds `debate_id` for log/span correlation itself — an
 Activity shares no memory with the Workflow that scheduled it, so nothing
 propagates this implicitly (spec 0005)."""
 
+import json
 import logging
 
 from temporalio import activity
 
 from ..core.observability import bind_debate_context
+from ..core.redis_client import redis_client
 from . import queries
 
 logger = logging.getLogger(__name__)
+
+
+async def _publish(debate_id: int, event: dict) -> None:
+    """Complete-event push (ADR 0006 Decision 1 — not token-by-token; the
+    atomic response is a real constraint of needing structured judgments
+    from a complete argument, verified empirically, not an implementation
+    shortcut). Best-effort and explicitly non-fatal: the DB write this
+    always runs after is the durable record (decision 12) — a Redis hiccup
+    should cost a connected viewer one missed live update, never fail the
+    Activity (and therefore never fail the whole debate) over a live-view
+    concern."""
+    try:
+        await redis_client.publish(f"debate:{debate_id}:stream", json.dumps(event))
+    except Exception:
+        logger.warning("failed to publish stream event %s for debate %d", event.get("type"), debate_id, exc_info=True)
 
 
 @activity.defn
@@ -59,6 +76,7 @@ async def persist_argument(
         responds_to_id=result.get("responds_to_argument_id"),
     )
     logger.info("persisted argument %d (round %d, persona %d)", argument_id, round_number, agent_persona_id)
+    await _publish(debate_id, {"type": "argument_complete", "argument_id": argument_id})
     return argument_id
 
 
@@ -131,6 +149,7 @@ async def set_debate_status(debate_id: int, status: str) -> None:
     bind_debate_context(debate_id=debate_id)
     await queries.set_debate_status(debate_id, status)
     logger.info("debate status -> %s", status)
+    await _publish(debate_id, {"type": "status_change", "status": status})
 
 
 @activity.defn
@@ -160,6 +179,7 @@ async def persist_verdict_and_close(debate_id: int, final_status: str, closing: 
     )
     await queries.close_debate(debate_id, final_status, closing["closing_summary"])
     logger.info("debate closed: status=%s decision=%s", final_status, closing["decision"])
+    await _publish(debate_id, {"type": "status_change", "status": final_status})
 
 
 @activity.defn
@@ -167,6 +187,7 @@ async def mark_failed(debate_id: int) -> None:
     bind_debate_context(debate_id=debate_id)
     await queries.set_debate_status(debate_id, "FAILED")
     logger.warning("debate marked FAILED — retries exhausted")
+    await _publish(debate_id, {"type": "status_change", "status": "FAILED"})
 
 
 ALL_ACTIVITIES = [

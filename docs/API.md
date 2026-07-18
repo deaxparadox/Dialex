@@ -68,15 +68,13 @@ Not built: the `WS /consultations/{id}/stream` bidirectional-streaming endpoint 
 | Method | Path | Notes |
 |---|---|---|
 | `POST` | `/api/debates/{debate_id}/start` | **Built and verified (spec 0005) — differs from this doc's original plan below.** JWT-protected, directly callable by the requesting user (not "internal-only"), 404 if the debate doesn't exist or isn't owned by the caller (`Case.created_by` — an IDOR here was caught and fixed during implementation), 409 if `Debate.status != OPEN`. Starts the real Temporal `DebateWorkflow` (sequential turn strategy, LangGraph + OpenAI, decisions 2/3/6/8). Directly callable because the consultation stage (below) doesn't exist yet — debates are currently seeded via Django admin, then started by calling this endpoint; expect this note to be revisited once consultation-triggered creation is actually built. |
-| `WS` | `/debates/{id}/stream` | Not yet built (decision 12) — the workflow currently runs to completion with no live push; results only land in Postgres. |
+| `WS` | `/api/debates/{id}/stream` | **Built and verified (ADR 0006/spec 0013) — backend only, differs from this doc's original plan below.** JWT rides the WebSocket subprotocol field (decision 13a — browsers can't set custom headers on a WS handshake); same ownership check as the REST start endpoint, closing the connection (manifests as an HTTP 403 at the handshake, since `close()` before `accept()` aborts the upgrade) rather than accepting for an invalid token or a non-owner. Pushes **complete** events only — see below for why token-by-token was tried and empirically ruled out, not silently skipped. No frontend consumes this yet (separate follow-up spec) — `debate-thread` still polls today. |
 
-**Event types on `/debates/{id}/stream`** (all relayed from the debate's Redis channel, `debate:{id}:stream`):
-- `argument_token` — `{agent_persona_id, round_number, delta}` — one streamed token chunk of an in-progress argument.
-- `argument_complete` — `{argument_id}` — signals the client to stop treating this argument as "in progress"; full record is fetchable via Django's REST API.
-- `research_sources_found` — `{agent_persona_id, sources: [...]}` — the initial source list for that agent's research pass.
-- `research_source_processing` / `research_source_processed` — `{agent_persona_id, index, url}` — per-source progress within the preparation round.
-- `status_change` — `{status}` — `Debate.status` transitions (`OPEN → ARGUING → CONVERGING → JUDGED`/`NO_CONSENSUS`/`FAILED`).
-- `retry` — `{activity}` — published explicitly when Temporal retries a failed Activity, so the client clears stale partial output before the next attempt's tokens arrive (this is hand-built, not automatic — see PRD §9).
+**Event types actually published on `/api/debates/{id}/stream`** (relayed from the debate's Redis channel, `debate:{id}:stream`):
+- `argument_complete` — `{argument_id}` — the argument is fully written to Postgres; full record is fetchable via Django's REST API. **Not `argument_token`** — ADR 0006 documents why: `ChatOpenAI(...).with_structured_output(ArgumentOutput).astream(...)` was tested directly against the real model and returns exactly one atomic chunk (no incremental content), because `position`/`confidence`/`responds_to_argument_id` are judgments that need the complete argument text — a real, verified constraint, not an unimplemented nice-to-have. A hand-rolled parser workaround to force partial content out was considered and rejected (trades a bounded constraint for an unbounded, unpredictable one).
+- `status_change` — `{status}` — `Debate.status` transitions (`OPEN → ARGUING → CONVERGING → JUDGED`/`NO_CONSENSUS`/`FAILED`). Built.
+- `research_sources_found` / `research_source_processing` / `research_source_processed` — not built; no research round exists yet (decisions 5b/11, still deferred) — these event types stay reserved.
+- `retry` — not built. Its stated purpose (clearing stale partial output before a retried Activity's next attempt) doesn't apply under complete-event push — nothing partial is ever published, so there's nothing to clean up. Deferred, not dropped: relevant again only if true token streaming is ever built.
 
 ### Notifications (general, not tied to any one debate)
 | Method | Path | Notes |
@@ -87,7 +85,7 @@ Not built: the `WS /consultations/{id}/stream` bidirectional-streaming endpoint 
 
 | Channel | Publishers | Subscribers |
 |---|---|---|
-| `debate:{debate_id}:stream` | Temporal Activities (argument generation, research steps) | FastAPI, one subscription per open `WS /debates/{id}/stream` connection |
+| `debate:{debate_id}:stream` | Temporal Activities — `persist_argument`, `set_debate_status`, `persist_verdict_and_close`, `mark_failed` (built, spec 0013); research-round Activities once that round exists | FastAPI, one subscription per open `WS /api/debates/{id}/stream` connection |
 | `app_notifications` | Django, any debate's Temporal workflow, consultation workflows | Every FastAPI worker process (one subscription each), routed to the right user's WebSocket in memory |
 
 No numbered Redis databases are used anywhere — pub/sub ignores them entirely, and separation is by channel name only (see decision 12).

@@ -20,21 +20,31 @@ class AuthContext:
     session_id: str | None  # None for tokens issued before spec 0005's session_id claim existed
 
 
+def decode_access_token(token: str | None) -> AuthContext | None:
+    """Shared by both auth paths — HTTP (`get_auth_context`, raises) and
+    WebSocket (spec 0013, returns `None` on failure instead: a WebSocket
+    has no HTTP response to attach a 401 to, so the caller closes the
+    connection itself rather than this function raising an HTTPException
+    that would make no sense on a socket)."""
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, settings.jwt_signing_key, algorithms=["HS256"])
+    except jwt.PyJWTError:
+        return None
+
+    if payload.get("token_type") != "access":
+        return None
+    user_id = payload.get("user_id")
+    if user_id is None:
+        return None
+    return AuthContext(user_id=int(user_id), session_id=payload.get("session_id"))
+
+
 def get_auth_context(
     credentials: HTTPAuthorizationCredentials = Security(_bearer),
 ) -> AuthContext:
-    try:
-        payload = jwt.decode(credentials.credentials, settings.jwt_signing_key, algorithms=["HS256"])
-    except jwt.PyJWTError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"
-        ) from exc
-
-    if payload.get("token_type") != "access":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not an access token")
-
-    user_id = payload.get("user_id")
-    if user_id is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token missing user_id")
-
-    return AuthContext(user_id=int(user_id), session_id=payload.get("session_id"))
+    auth = decode_access_token(credentials.credentials)
+    if auth is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+    return auth
