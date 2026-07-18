@@ -270,27 +270,79 @@
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend .dot { width: 9px; height: 9px; border-radius: 50%; }
 
-.stat-strip {
-  display: flex;
-  gap: 0;
-  border-top: 1px solid var(--line);
-  margin-top: 22px;
-  flex-shrink: 0;
+/* Confidence-spread/positions-stable/uncited-changes stats need real
+   ConvergenceCheck data, not fetched in this milestone (spec 0008) — the
+   stat-strip that used to show hardcoded mock numbers is gone rather than
+   showing fabricated figures next to otherwise-real data. */
+
+.start-button {
+  margin-top: 12px;
+  background: var(--convergence);
+  color: var(--page);
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
 }
-.stat { flex: 1; padding: 14px 16px 0; border-left: 1px solid var(--line); }
-.stat:first-child { border-left: none; padding-left: 4px; }
-.stat .k {
+.start-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.start-error {
+  color: var(--divergence);
+  font-size: 12.5px;
+  margin: 8px 0 0;
+}
+
+.state-message {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--ink-muted);
+  font-size: 15px;
+  text-align: center;
+  padding: 24px;
+}
+.state-sub {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
+
+.reading-empty {
+  color: var(--ink-faint);
+  font-size: 13.5px;
+  margin-top: 16px;
+}
+
+.verdict-card {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.verdict-head {
   font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--ink-faint);
+  color: var(--judge);
   font-weight: 600;
+  margin-bottom: 6px;
 }
-.stat .v {
+.verdict-decision {
   font-family: var(--font-mono);
-  font-size: 19px;
-  margin-top: 4px;
-  font-variant-numeric: tabular-nums;
+  font-size: 13.5px;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+.verdict-reasoning {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  margin: 0;
 }
 
 /* ---------- reading panel content ---------- */

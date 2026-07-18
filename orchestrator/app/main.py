@@ -2,9 +2,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from sqlalchemy import select
 
+from .core.config import settings
 from .core.db import engine
 from .core.generated_tables import t_accounts_user
 from .core.observability import bind_debate_context, setup_observability
@@ -24,6 +26,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Dialex FastAPI service", lifespan=lifespan)
+# spec 0008 — the frontend calls this API directly (e.g. the start-debate
+# button) from a different origin (the dev server); missing this made every
+# such call fail at the browser's CORS preflight, never reaching this
+# service at all (caught via real browser verification, not anticipated
+# when spec 0005 first built this endpoint).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_allowed_origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 FastAPIInstrumentor.instrument_app(app)
 app.include_router(debates_router)
 

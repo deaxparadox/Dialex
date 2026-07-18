@@ -9,7 +9,14 @@ class CaseTypeConfig(models.Model):
 
     type = models.CharField(max_length=100, unique=True)
     position_options = models.JSONField(
-        default=list, blank=True, help_text='e.g. ["approve", "reject", "uncertain"]'
+        default=list,
+        blank=True,
+        help_text=(
+            'e.g. ["reject", "uncertain", "approve"]. List ORDER matters (spec 0008): '
+            "it doubles as the divergence→convergence spectrum the debate-thread "
+            "visualization plots arguments along — seed it most-divergent-first, "
+            "most-convergent-last, not just as an unordered set of valid values."
+        ),
     )
     decision_options = models.JSONField(
         default=list, blank=True, help_text='e.g. ["approve", "deny"], or [] for research_debate'

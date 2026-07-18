@@ -22,21 +22,21 @@ All endpoints below require a valid access token unless noted. List endpoints ar
 ### Cases
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/cases/` | List the user's cases. |
-| `GET` | `/api/cases/{id}/` | Case detail, including which `ConsultationSession` produced it. |
+| `GET` | `/api/cases/` | **Built and verified (spec 0008).** List the user's cases — ownership-scoped via `get_queryset` (never fetch-then-check), matching the IDOR-avoidance pattern already learned in spec 0005. |
+| `GET` | `/api/cases/{id}/` | **Built and verified (spec 0008).** Case detail. (`ConsultationSession` linkage described below isn't populated yet — that stage doesn't exist.) |
 
-*(No user-facing `POST` — a `Case` is created server-side as a side effect of `ConsultationSession` approval, via FastAPI. See below.)*
+*(No user-facing `POST` yet — a `Case` is still admin-seeded for testing; the plan below (created server-side via `ConsultationSession` approval) is accurate once the consultant stage gets built.)*
 
 ### Debates
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/debates/` | List debates; filterable by case, status. |
-| `GET` | `/api/debates/{id}/` | Status, `turn_strategy`, `Verdict`, `HumanReview` if present. |
-| `GET` | `/api/debates/{id}/arguments/` | Full argument DAG — this is the catch-up mechanism for a client reconnecting mid-debate, read before opening the live stream. |
-| `GET` | `/api/debates/{id}/research-findings/` | All `ResearchFinding` rows for the debate. |
-| `GET` | `/api/debates/{id}/convergence-checks/` | Audit trail — each check's actual computed `signals`, not just a label. |
-| `GET` | `/api/debates/{id}/human-review/` | Existing review, if any. |
-| `POST` | `/api/debates/{id}/human-review/` | Body: `final_decision` (must be one of `CaseTypeConfig.decision_options` for this debate's case type, or omitted if that list is empty), `comment` (required). Only valid once `Debate.status = JUDGED` (or `NO_CONSENSUS`/`FAILED` — human review is required regardless of outcome). |
+| `GET` | `/api/debates/` | **Built and verified (spec 0008).** List debates, ownership-scoped via the owning `Case`; optional `?case=<id>` filter. |
+| `GET` | `/api/debates/{id}/` | **Built and verified (spec 0008).** Status, `turn_strategy`, nested `Verdict` if present. (`HumanReview` isn't built yet — that flow doesn't exist.) |
+| `GET` | `/api/debates/{id}/arguments/` | **Built and verified (spec 0008).** Full argument DAG, each row including a server-computed `leaning` (0=divergent, 1=convergent) for the debate-thread visualization — derived from `CaseTypeConfig.position_options`' list order (now documented as spectrum order, decision/spec 0008), falling back to distinct-value clustering when a position isn't in that list. This is also the catch-up mechanism the original plan described for a client reconnecting mid-debate, ahead of the live stream below (not built yet — see decision 12). |
+| `GET` | `/api/debates/{id}/research-findings/` | Not built yet — no research round exists (decision 5b/11 deferred). |
+| `GET` | `/api/debates/{id}/convergence-checks/` | Not built yet — the debate-thread view doesn't currently show these stats (spec 0008 explicitly dropped the mock stat-strip rather than show fabricated numbers next to real data). |
+| `GET` | `/api/debates/{id}/human-review/` | Not built yet — no human-review screen exists. |
+| `POST` | `/api/debates/{id}/human-review/` | Not built yet. Body: `final_decision` (must be one of `CaseTypeConfig.decision_options` for this debate's case type, or omitted if that list is empty), `comment` (required). Only valid once `Debate.status = JUDGED` (or `NO_CONSENSUS`/`FAILED` — human review is required regardless of outcome). |
 
 ### Config & personas
 | Method | Path | Notes |

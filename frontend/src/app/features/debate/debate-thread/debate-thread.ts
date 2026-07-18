@@ -1,5 +1,7 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+
+import { ApiArgument, ApiCase, ApiDebate, DebatesApi } from '../data/debates-api';
 
 export interface DebateArgument {
   id: string;
@@ -23,67 +25,37 @@ interface Connector {
 
 const PLOT_X_MIN = 60;
 const PLOT_X_MAX = 840;
-const ROUND_Y: Record<number, number> = { 1: 100, 2: 240, 3: 380 };
+const PLOT_Y_MIN = 100;
+const PLOT_Y_MAX = 380;
 
-// Mock data standing in for what will later arrive over the per-debate WebSocket
-// (references/002-design-review-findings.md, decisions 12/17). Swapping this out later
-// for a real `core/` real-time service shouldn't require restructuring this component.
-const MOCK_ARGUMENTS: DebateArgument[] = [
-  {
-    id: 'r1',
-    agentName: 'Agent R',
-    agentRole: 'Risk',
-    round: 1,
-    leaning: 0.1,
-    position: 'reject',
-    confidence: 0.8,
-    text: 'The debt-to-income ratio sits at 46% above our typical threshold for this loan type without a compensating factor.',
-    respondsToId: null,
-    respondsToLabel: null,
-    isStreaming: false,
-  },
-  {
-    id: 'g2',
-    agentName: 'Agent G',
-    agentRole: 'Growth',
-    round: 2,
-    leaning: 0.95,
-    position: 'approve',
-    confidence: 0.9,
-    text: "The co-signer's verified income covers the shortfall once recalculated against the joint application.",
-    respondsToId: null,
-    respondsToLabel: null,
-    isStreaming: false,
-  },
-  {
-    id: 'r3',
-    agentName: 'Agent R',
-    agentRole: 'Risk',
-    round: 3,
-    leaning: 0.875,
-    position: 'approve',
-    confidence: 0.75,
-    text: "Reconsidering: the co-signer's income does cover the gap once I recalculate jointly. Withdrawing my objection.",
-    respondsToId: 'g2',
-    respondsToLabel: 'Responds to Agent G, round 2',
-    isStreaming: false,
-  },
-  {
-    id: 'c3',
-    agentName: 'Agent C',
-    agentRole: 'Compliance',
-    round: 3,
-    leaning: 0.65,
-    position: null,
-    confidence: null,
-    text: 'Agreed on the ratio recalculation. One remaining check: the joint application needs both signatures on file before this can close, which the packet is currently missing.',
-    respondsToId: null,
-    respondsToLabel: null,
-    isStreaming: true,
-  },
-];
+const ACTIVE_STATUSES = new Set(['OPEN', 'ARGUING', 'CONVERGING']);
+const POLL_INTERVAL_MS = 4000;
 
-const CONNECTORS: Connector[] = [{ fromId: 'g2', toId: 'r3' }];
+function mapArgument(api: ApiArgument): DebateArgument {
+  return {
+    id: String(api.id),
+    agentName: api.agent_persona.name,
+    agentRole: api.agent_persona.role_description || api.agent_persona.role,
+    round: api.round_number + 1, // display 1-indexed; the API's round_number is 0-indexed
+    leaning: api.leaning,
+    position: api.position,
+    confidence: api.confidence,
+    text: api.content,
+    respondsToId: api.responds_to_id !== null ? String(api.responds_to_id) : null,
+    respondsToLabel: null, // filled in once the full list is known — see fillRespondsToLabels
+    isStreaming: false, // no live-in-progress concept without decision 12's streaming (spec 0008)
+  };
+}
+
+function fillRespondsToLabels(args: DebateArgument[]): DebateArgument[] {
+  const byId = new Map(args.map((a) => [a.id, a]));
+  return args.map((a) => {
+    if (!a.respondsToId) return a;
+    const target = byId.get(a.respondsToId);
+    if (!target) return a;
+    return { ...a, respondsToLabel: `Responds to ${target.agentName}, round ${target.round}` };
+  });
+}
 
 @Component({
   selector: 'app-debate-thread',
@@ -94,44 +66,126 @@ const CONNECTORS: Connector[] = [{ fromId: 'g2', toId: 'r3' }];
 export class DebateThread {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly api = inject(DebatesApi);
+  private readonly destroyRef = inject(DestroyRef);
 
   // Theme deliberately stays local, not a query param (spec 0007) — it's a
   // personal display preference, not "which view of this debate," and a
   // shared link shouldn't force the sharer's theme on whoever opens it.
   readonly theme = signal<'light' | 'dark'>('light');
-  readonly arguments = signal<DebateArgument[]>(MOCK_ARGUMENTS);
-  readonly connectors = CONNECTORS;
-
-  private readonly streamingArgument = computed(
-    () => this.arguments().find((a) => a.isStreaming) ?? null,
-  );
-
-  // mode/selectedId read their initial value from the URL (spec 0007),
-  // falling back to the pre-existing defaults when absent/invalid — must
-  // stay declared after `arguments`/`streamingArgument` above, since the
-  // read*Param() methods below depend on them.
   readonly mode = signal<'minimal' | 'detail'>(this.readModeParam());
-  readonly selectedId = signal<string>(this.readSelectedParam());
+
+  readonly loading = signal(true);
+  readonly noDebateSelected = signal(false);
+  readonly notFound = signal(false);
+
+  readonly debate = signal<ApiDebate | null>(null);
+  readonly case = signal<ApiCase | null>(null);
+  readonly arguments = signal<DebateArgument[]>([]);
+  readonly connectors = computed<Connector[]>(() =>
+    this.arguments()
+      .filter((a): a is DebateArgument & { respondsToId: string } => a.respondsToId !== null)
+      .map((a) => ({ fromId: a.respondsToId, toId: a.id })),
+  );
+  readonly roundNumbers = computed(() => [...new Set(this.arguments().map((a) => a.round))].sort((a, b) => a - b));
+
+  readonly selectedId = signal<string | null>(null);
   readonly selectedArgument = computed(
     () => this.arguments().find((a) => a.id === this.selectedId()) ?? null,
   );
-
   readonly revealedText = signal('');
-  private readonly reduceMotion =
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  readonly isActive = computed(() => ACTIVE_STATUSES.has(this.debate()?.status ?? ''));
+  readonly starting = signal(false);
+  readonly startError = signal<string | null>(null);
+  private pollHandle: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
-    const streaming = this.streamingArgument();
-    if (streaming) {
-      this.revealText(streaming);
-    } else {
-      this.revealedText.set(this.selectedArgument()?.text ?? '');
+    const idParam = this.route.snapshot.paramMap.get('id');
+    if (!idParam) {
+      this.noDebateSelected.set(true);
+      this.loading.set(false);
+      return;
     }
-    // Reflects the resolved defaults into the URL even when nothing was
-    // passed in — a bare `/` load ends up at e.g. `/?mode=detail&selected=c3`.
-    this.syncQueryParams();
+    void this.loadDebate(Number(idParam));
+    this.destroyRef.onDestroy(() => this.stopPolling());
+  }
+
+  private async loadDebate(debateId: number, preserveSelection = false): Promise<void> {
+    try {
+      const [debate, apiArguments] = await Promise.all([
+        this.api.getDebate(debateId),
+        this.api.getArguments(debateId),
+      ]);
+      const mapped = fillRespondsToLabels(apiArguments.map(mapArgument));
+      this.debate.set(debate);
+      this.arguments.set(mapped);
+      if (!this.case()) {
+        this.case.set(await this.api.getCase(debate.case_id));
+      }
+
+      if (!preserveSelection) {
+        const requested = this.route.snapshot.queryParamMap.get('selected');
+        const initialId =
+          (requested && mapped.some((a) => a.id === requested) && requested) ||
+          mapped[mapped.length - 1]?.id ||
+          null;
+        this.selectedId.set(initialId);
+        this.revealedText.set(mapped.find((a) => a.id === initialId)?.text ?? '');
+        this.syncQueryParams();
+      } else {
+        // A poll tick refreshed the data — keep whatever the user had open,
+        // just refresh its text in case it changed (it won't have, but stays correct if it ever does).
+        this.revealedText.set(this.selectedArgument()?.text ?? this.revealedText());
+      }
+
+      // `isActive()` already covers OPEN — there's no reason to exclude it:
+      // right after startDebate() calls loadDebate() to refresh, the backend
+      // may not have transitioned off OPEN yet (a race with the workflow
+      // actually starting), and excluding OPEN here meant polling never
+      // started at all in that case, leaving the UI frozen even though the
+      // debate was running and finishing server-side (found via real-browser
+      // verification — a chained short-poll trace with zero DOM change over
+      // 66s while the backend had already reached NO_CONSENSUS).
+      if (this.isActive()) {
+        this.startPolling(debateId);
+      } else {
+        this.stopPolling();
+      }
+    } catch {
+      // 404 (not found/not owned) and any other load failure both render
+      // the same "not found" state — no separate handling needed yet.
+      this.notFound.set(true);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  async startDebate(): Promise<void> {
+    const debateId = this.debate()?.id;
+    if (!debateId || this.starting()) return;
+    this.starting.set(true);
+    this.startError.set(null);
+    try {
+      await this.api.startDebate(debateId);
+      await this.loadDebate(debateId, true);
+    } catch {
+      this.startError.set('Could not start this debate — please try again.');
+    } finally {
+      this.starting.set(false);
+    }
+  }
+
+  private startPolling(debateId: number): void {
+    if (this.pollHandle) return;
+    this.pollHandle = setInterval(() => void this.loadDebate(debateId, true), POLL_INTERVAL_MS);
+  }
+
+  private stopPolling(): void {
+    if (this.pollHandle) {
+      clearInterval(this.pollHandle);
+      this.pollHandle = null;
+    }
   }
 
   setTheme(mode: 'light' | 'dark') {
@@ -155,19 +209,12 @@ export class DebateThread {
     return param === 'minimal' || param === 'detail' ? param : 'detail';
   }
 
-  private readSelectedParam(): string {
-    const param = this.route.snapshot.queryParamMap.get('selected');
-    if (param && this.arguments().some((a) => a.id === param)) {
-      return param;
-    }
-    return this.streamingArgument()?.id ?? MOCK_ARGUMENTS[0].id;
-  }
-
   /** `replaceUrl: true` is deliberate (spec 0007) — every node click or mode
    * toggle updates the URL without pushing a new history entry, otherwise
    * the back button would tediously step through every argument ever
    * clicked instead of leaving the page. */
   private syncQueryParams(): void {
+    if (this.selectedId() === null) return;
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { mode: this.mode(), selected: this.selectedId() },
@@ -176,29 +223,19 @@ export class DebateThread {
     });
   }
 
-  private revealText(arg: DebateArgument) {
-    if (this.reduceMotion) {
-      this.revealedText.set(arg.text);
-      return;
-    }
-    const words = arg.text.split(' ');
-    let shown = 0;
-    const step = () => {
-      shown++;
-      this.revealedText.set(words.slice(0, shown).join(' '));
-      if (shown < words.length) {
-        setTimeout(step, 55);
-      }
-    };
-    step();
-  }
-
   xFor(arg: DebateArgument): number {
     return PLOT_X_MIN + arg.leaning * (PLOT_X_MAX - PLOT_X_MIN);
   }
 
+  yForRound(round: number): number {
+    const rounds = this.roundNumbers();
+    const index = rounds.indexOf(round);
+    if (rounds.length <= 1 || index < 0) return (PLOT_Y_MIN + PLOT_Y_MAX) / 2;
+    return PLOT_Y_MIN + (index / (rounds.length - 1)) * (PLOT_Y_MAX - PLOT_Y_MIN);
+  }
+
   yFor(arg: DebateArgument): number {
-    return ROUND_Y[arg.round] ?? 100;
+    return this.yForRound(arg.round);
   }
 
   colorFor(arg: DebateArgument): string {
