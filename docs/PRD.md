@@ -124,6 +124,6 @@ Different from the above: these aren't unfinished, they're the actual chosen arc
 ## 10. Open items — not yet written down (tracked, not blocking this PRD)
 
 - Full deployment/docker-compose service list and required secrets enumeration.
-- Frontend screens/pages (case submission, consultant chat, live debate view, human review screen, notification inbox, debate history) — next up after this PRD and the API doc.
+- Remaining frontend screens/pages not yet built: case submission, consultant chat, human review screen, notification inbox, debate history. (Login/register and the live-debate-thread view are done — specs 0001/0006 — but still on mock orchestration data; see `docs/FLOWS.md`.)
 - Cost controls (decision 19, explicitly deferred).
 - Testing strategy specifics, Angular state-management choice, persona-management UI vs. Django-admin-only.

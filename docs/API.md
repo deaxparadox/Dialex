@@ -4,7 +4,7 @@
 
 ## Auth (shared across both services)
 
-Access token in memory (sent as a normal `Authorization: Bearer <token>` header on REST calls), refresh token in an `HttpOnly`/`Secure`/`SameSite=Strict` cookie scoped to the refresh endpoint. Django issues via `simplejwt`; FastAPI verifies independently with the shared signing key — no callback to Django per request.
+Access token in memory (sent as a normal `Authorization: Bearer <token>` header on REST calls), refresh token in an `HttpOnly`/`Secure`/`SameSite=Strict` cookie scoped to the refresh endpoint. Django issues via `simplejwt`; FastAPI verifies independently with the shared signing key — no callback to Django per request. **Built and verified** (specs 0003/0006), plus one addition beyond the original plan: both tokens also carry a `session_id` claim, minted once at login and surviving refresh rotation, for cross-service log/trace correlation (see `docs/FLOWS.md`'s "How debugging/tracing works" section).
 
 | Method | Path | Service | Notes |
 |---|---|---|---|
@@ -62,8 +62,8 @@ All endpoints below require a valid access token unless noted. List endpoints ar
 ### Debates
 | Method | Path | Notes |
 |---|---|---|
-| `POST` | `/debates/` | Starts the main Temporal Workflow for an approved `Case` (only reachable internally, as a result of consultation approval — not a general-purpose "start any case" endpoint). |
-| `WS` | `/debates/{id}/stream` | The live channel for one debate. Event types below. |
+| `POST` | `/api/debates/{debate_id}/start` | **Built and verified (spec 0005) — differs from this doc's original plan below.** JWT-protected, directly callable by the requesting user (not "internal-only"), 404 if the debate doesn't exist or isn't owned by the caller (`Case.created_by` — an IDOR here was caught and fixed during implementation), 409 if `Debate.status != OPEN`. Starts the real Temporal `DebateWorkflow` (sequential turn strategy, LangGraph + OpenAI, decisions 2/3/6/8). Directly callable because the consultation stage (below) doesn't exist yet — debates are currently seeded via Django admin, then started by calling this endpoint; expect this note to be revisited once consultation-triggered creation is actually built. |
+| `WS` | `/debates/{id}/stream` | Not yet built (decision 12) — the workflow currently runs to completion with no live push; results only land in Postgres. |
 
 **Event types on `/debates/{id}/stream`** (all relayed from the debate's Redis channel, `debate:{id}:stream`):
 - `argument_token` — `{agent_persona_id, round_number, delta}` — one streamed token chunk of an in-progress argument.
