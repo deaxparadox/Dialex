@@ -9,10 +9,13 @@ from pathlib import Path
 from temporalio.contrib.langgraph import LangGraphPlugin
 from temporalio.worker import Worker
 
+from .consultations.activities import ALL_ACTIVITIES as CONSULTATION_ACTIVITIES
+from .consultations.graphs import CONSULTANT_GRAPH, build_consultant_graph
+from .consultations.workflows import ConsultationWorkflow
 from .core.db import engine
 from .core.observability import setup_observability
 from .core.temporal_client import TASK_QUEUE, get_temporal_client
-from .debates.activities import ALL_ACTIVITIES
+from .debates.activities import ALL_ACTIVITIES as DEBATE_ACTIVITIES
 from .debates.graphs import (
     ARGUMENT_GRAPH,
     JUDGE_CLOSING_GRAPH,
@@ -36,13 +39,14 @@ async def main():
             ARGUMENT_GRAPH: build_argument_graph(),
             JUDGE_OPENING_GRAPH: build_judge_opening_graph(),
             JUDGE_CLOSING_GRAPH: build_judge_closing_graph(),
+            CONSULTANT_GRAPH: build_consultant_graph(),
         }
     )
     worker = Worker(
         client,
         task_queue=TASK_QUEUE,
-        workflows=[DebateWorkflow],
-        activities=ALL_ACTIVITIES,
+        workflows=[DebateWorkflow, ConsultationWorkflow],
+        activities=[*DEBATE_ACTIVITIES, *CONSULTATION_ACTIVITIES],
         plugins=[plugin],
     )
     await worker.run()

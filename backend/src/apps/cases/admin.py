@@ -5,7 +5,8 @@ from .models import Case, CaseTypeConfig
 
 @admin.register(CaseTypeConfig)
 class CaseTypeConfigAdmin(admin.ModelAdmin):
-    list_display = ("type",)
+    list_display = ("type", "default_consultant_persona", "default_judge_persona", "default_max_rounds")
+    filter_horizontal = ("default_participant_personas",)
 
 
 @admin.register(Case)

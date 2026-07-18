@@ -16,6 +16,7 @@ class ConsultationSession(models.Model):
         OPEN = "OPEN", "Open"
         AWAITING_APPROVAL = "AWAITING_APPROVAL", "Awaiting approval"
         APPROVED = "APPROVED", "Approved"
+        FAILED = "FAILED", "Failed"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="consultation_sessions"

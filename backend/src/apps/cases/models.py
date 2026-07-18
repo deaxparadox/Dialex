@@ -25,6 +25,39 @@ class CaseTypeConfig(models.Model):
         blank=True,
         help_text="Appended to the research Activity's system prompt for this case type (decision 14).",
     )
+    default_consultant_persona = models.ForeignKey(
+        "debates.AgentPersona",
+        on_delete=models.PROTECT,
+        related_name="+",
+        limit_choices_to={"role": "consultant"},
+        help_text=(
+            "Required — every case type must have a consultant configured (decision 10: "
+            "the consultant runs for every case, every time). No default/null: a case type "
+            "missing this simply can't be saved (spec 0009)."
+        ),
+    )
+    default_participant_personas = models.ManyToManyField(
+        "debates.AgentPersona",
+        related_name="+",
+        limit_choices_to={"role": "participant"},
+        blank=True,
+        help_text=(
+            "Frozen into DebateParticipant.persona_snapshot when a consultation is approved "
+            "(spec 0009). Not enforced non-empty at the DB level — the approval activity "
+            "checks and fails loudly instead of silently creating a zero-participant Debate."
+        ),
+    )
+    default_judge_persona = models.ForeignKey(
+        "debates.AgentPersona",
+        on_delete=models.PROTECT,
+        related_name="+",
+        limit_choices_to={"role": "judge"},
+        help_text="Required — same fail-fast reasoning as default_consultant_persona (spec 0009).",
+    )
+    default_max_rounds = models.PositiveIntegerField(
+        default=3,
+        help_text="Behavioral default for an auto-created Debate's max_rounds (spec 0009).",
+    )
 
     def __str__(self):
         return self.type

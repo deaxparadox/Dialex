@@ -25,7 +25,7 @@ All endpoints below require a valid access token unless noted. List endpoints ar
 | `GET` | `/api/cases/` | **Built and verified (spec 0008).** List the user's cases — ownership-scoped via `get_queryset` (never fetch-then-check), matching the IDOR-avoidance pattern already learned in spec 0005. |
 | `GET` | `/api/cases/{id}/` | **Built and verified (spec 0008).** Case detail. (`ConsultationSession` linkage described below isn't populated yet — that stage doesn't exist.) |
 
-*(No user-facing `POST` yet — a `Case` is still admin-seeded for testing; the plan below (created server-side via `ConsultationSession` approval) is accurate once the consultant stage gets built.)*
+*(No direct `POST /api/cases/` — a `Case` is created server-side only, via `ConsultationSession` approval (spec 0009, built and verified) or Django-admin seeding. No frontend exists yet to drive the consultation flow, so a real user still can't create one through the running app.)*
 
 ### Debates
 | Method | Path | Notes |
@@ -53,11 +53,16 @@ All endpoints below require a valid access token unless noted. List endpoints ar
 ## FastAPI — orchestration, live/streaming, data in motion
 
 ### Consultation
+
+**Built and verified (ADR 0005/spec 0009) — differs from this doc's original plan below.** No WebSocket/streaming: turns are plain synchronous HTTP request/response, backed by a Temporal `ConsultationWorkflow` via `workflow.update` (not signal+poll) — chosen deliberately over building Redis/WebSocket streaming (decision 12) for chat specifically; see ADR 0005 decisions 2–3. Backend only — no frontend UI exists yet (a separate follow-up spec).
+
 | Method | Path | Notes |
 |---|---|---|
-| `POST` | `/consultations/` | Body: initial free-text request + `case_type`. Starts a `ConsultationSession` (Temporal-backed, same infrastructure as debates). Returns session ID. |
-| `WS` | `/consultations/{id}/stream` | Bidirectional: user messages sent in, consultant's streamed reply tokens come back. Same subprotocol-token auth as debate streams. |
-| `POST` | `/consultations/{id}/approve/` | Finalizes the negotiated question/payload. Triggers `Case` + `Debate` creation (written directly to Django's tables via the `sqlacodegen`-generated SQLAlchemy Core layer — no HTTP call back to Django). Returns the new `debate_id`. |
+| `POST` | `/api/consultations/` | Body: `{case_type}`. Looks up `CaseTypeConfig.default_consultant_persona`, creates a `ConsultationSession` row, starts `ConsultationWorkflow`. Returns `{session_id}`. 404 if `case_type` is unknown. |
+| `POST` | `/api/consultations/{id}/messages` | Body: `{text}`. Delivered via a Temporal Update (`submit_message`) — blocks until the consultant's full reply comes back in the same response: `{message, ready_to_finalize}`. 404 if the session isn't owned by the caller; 409 if the session is already approved/failed. |
+| `POST` | `/api/consultations/{id}/approve` | Uses the latest consultant-proposed payload verbatim (no edit step) to create a real `Case` + `Debate` + `DebateParticipant` rows — participants/judge/max_rounds auto-populated from `CaseTypeConfig.default_participant_personas`/`default_judge_persona`/`default_max_rounds` (new fields, spec 0009), written directly via the `sqlacodegen`-generated SQLAlchemy Core layer, no HTTP call back to Django. Returns `{case_id, debate_id}`. 400 if the consultant hasn't proposed a payload yet; 404/409 same as above. |
+
+Not built: the `WS /consultations/{id}/stream` bidirectional-streaming endpoint originally planned here — deferred along with decision 12's Redis/WebSocket work generally; SSE (not WebSocket+Redis) is the current leading idea if/when consultation chat gets live token streaming, since a chat reply has exactly one listener unlike debate-argument viewing (ADR 0005 decision 3).
 
 ### Debates
 | Method | Path | Notes |

@@ -36,18 +36,6 @@ t_auth_group = Table(
     Index('auth_group_name_a6ea08ec_like', 'name', postgresql_ops={'name': 'varchar_pattern_ops'})
 )
 
-t_cases_casetypeconfig = Table(
-    'cases_casetypeconfig', metadata,
-    Column('id', BigInteger, Identity(start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True),
-    Column('type', String(100), nullable=False),
-    Column('position_options', JSONB, nullable=False),
-    Column('decision_options', JSONB, nullable=False),
-    Column('research_guardrail_prompt', Text, nullable=False),
-    PrimaryKeyConstraint('id', name='cases_casetypeconfig_pkey'),
-    UniqueConstraint('type', name='cases_casetypeconfig_type_key'),
-    Index('cases_casetypeconfig_type_5692f14e_like', 'type', postgresql_ops={'type': 'varchar_pattern_ops'})
-)
-
 t_debates_agentpersona = Table(
     'debates_agentpersona', metadata,
     Column('id', BigInteger, Identity(start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True),
@@ -110,6 +98,26 @@ t_auth_permission = Table(
     PrimaryKeyConstraint('id', name='auth_permission_pkey'),
     UniqueConstraint('content_type_id', 'codename', name='auth_permission_content_type_id_codename_01ab375a_uniq'),
     Index('auth_permission_content_type_id_2f476e4b', 'content_type_id')
+)
+
+t_cases_casetypeconfig = Table(
+    'cases_casetypeconfig', metadata,
+    Column('id', BigInteger, Identity(start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True),
+    Column('type', String(100), nullable=False),
+    Column('position_options', JSONB, nullable=False),
+    Column('decision_options', JSONB, nullable=False),
+    Column('research_guardrail_prompt', Text, nullable=False),
+    Column('default_consultant_persona_id', BigInteger, nullable=False),
+    Column('default_judge_persona_id', BigInteger, nullable=False),
+    Column('default_max_rounds', Integer, nullable=False),
+    CheckConstraint('default_max_rounds >= 0', name='cases_casetypeconfig_default_max_rounds_check'),
+    ForeignKeyConstraint(['default_consultant_persona_id'], ['debates_agentpersona.id'], deferrable=True, initially='DEFERRED', name='cases_casetypeconfig_default_consultant_p_2ff5aaa3_fk_debates_a'),
+    ForeignKeyConstraint(['default_judge_persona_id'], ['debates_agentpersona.id'], deferrable=True, initially='DEFERRED', name='cases_casetypeconfig_default_judge_person_f1a6264c_fk_debates_a'),
+    PrimaryKeyConstraint('id', name='cases_casetypeconfig_pkey'),
+    UniqueConstraint('type', name='cases_casetypeconfig_type_key'),
+    Index('cases_casetypeconfig_default_consultant_persona_id_2ff5aaa3', 'default_consultant_persona_id'),
+    Index('cases_casetypeconfig_default_judge_persona_id_f1a6264c', 'default_judge_persona_id'),
+    Index('cases_casetypeconfig_type_5692f14e_like', 'type', postgresql_ops={'type': 'varchar_pattern_ops'})
 )
 
 t_consultations_consultationsession = Table(
@@ -202,6 +210,19 @@ t_cases_case = Table(
     PrimaryKeyConstraint('id', name='cases_case_pkey'),
     UniqueConstraint('consultation_session_id', name='cases_case_consultation_session_id_key'),
     Index('cases_case_created_by_id_91d115ec', 'created_by_id')
+)
+
+t_cases_casetypeconfig_default_participant_personas = Table(
+    'cases_casetypeconfig_default_participant_personas', metadata,
+    Column('id', BigInteger, Identity(start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True),
+    Column('casetypeconfig_id', BigInteger, nullable=False),
+    Column('agentpersona_id', BigInteger, nullable=False),
+    ForeignKeyConstraint(['agentpersona_id'], ['debates_agentpersona.id'], deferrable=True, initially='DEFERRED', name='cases_casetypeconfig_agentpersona_id_ea3b76b2_fk_debates_a'),
+    ForeignKeyConstraint(['casetypeconfig_id'], ['cases_casetypeconfig.id'], deferrable=True, initially='DEFERRED', name='cases_casetypeconfig_casetypeconfig_id_5e001dce_fk_cases_cas'),
+    PrimaryKeyConstraint('id', name='cases_casetypeconfig_default_participant_personas_pkey'),
+    UniqueConstraint('casetypeconfig_id', 'agentpersona_id', name='cases_casetypeconfig_def_casetypeconfig_id_agentp_15bf66de_uniq'),
+    Index('cases_casetypeconfig_defau_agentpersona_id_ea3b76b2', 'agentpersona_id'),
+    Index('cases_casetypeconfig_defau_casetypeconfig_id_5e001dce', 'casetypeconfig_id')
 )
 
 t_consultations_consultationturn = Table(
