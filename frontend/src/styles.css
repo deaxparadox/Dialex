@@ -17,6 +17,12 @@
   --divergence: #D9713E;
   --convergence: #1E9E82;
   --judge: #6E63B6;
+  /* Per-agent identity (spec 0019) — a separate "who" signal from
+     divergence/convergence's "how they lean," distinct hues on purpose. */
+  --agent-a: #3D7EBF;
+  --agent-a-bg: #EAF2FA;
+  --agent-b: #B8477C;
+  --agent-b-bg: #FAEAF1;
 
   --font-display: "Iowan Old Style", "Palatino Linotype", "Georgia", ui-serif, serif;
   --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -39,6 +45,10 @@
     --divergence: #E8834F;
     --convergence: #2FBF9F;
     --judge: #9A8FE0;
+    --agent-a: #5FA3E0;
+    --agent-a-bg: #16222E;
+    --agent-b: #E0709F;
+    --agent-b-bg: #2A1620;
   }
 }
 
@@ -52,6 +62,10 @@
   --divergence: #E8834F;
   --convergence: #2FBF9F;
   --judge: #9A8FE0;
+  --agent-a: #5FA3E0;
+  --agent-a-bg: #16222E;
+  --agent-b: #E0709F;
+  --agent-b-bg: #2A1620;
 }
 
 :root[data-theme="light"] {
@@ -64,6 +78,10 @@
   --divergence: #D9713E;
   --convergence: #1E9E82;
   --judge: #6E63B6;
+  --agent-a: #3D7EBF;
+  --agent-a-bg: #EAF2FA;
+  --agent-b: #B8477C;
+  --agent-b-bg: #FAEAF1;
 }
 
 * {

@@ -46,10 +46,32 @@
     <div class="thread-panel" #threadContainer>
       @if (d.opening_statement) {
         <div class="opening-entry">
-          <div class="opening-head">Opening Statement &middot; {{ d.judge_persona.name }}</div>
+          <div class="opening-head">
+            <span class="avatar avatar-judge avatar-inline">{{ initialFor(d.judge_persona.name) }}</span>
+            Opening Statement &middot; {{ d.judge_persona.name }}
+          </div>
           <p class="opening-text">{{ d.opening_statement }}</p>
         </div>
+      } @else if (openingGeneratingTurn(); as gt) {
+        <div class="opening-entry opening-entry--thinking">
+          <div class="opening-head">
+            <span class="avatar avatar-judge avatar-inline">{{ initialFor(gt.agentName) }}</span>
+            {{ gt.agentName }} is preparing opening remarks&hellip;
+          </div>
+          <span class="typing-indicator"><span></span><span></span><span></span></span>
+        </div>
       } @else if (isActive() && d.status !== 'OPEN') {
+        <!-- Covers two cases: reconnecting mid-generation (a turn_started
+             event already fired before this page/socket existed and Redis
+             pub/sub has no replay, ADR 0006 decision 4) and the brief window
+             after generatingTurn has moved on to round 1 but the opening
+             statement's own refetch hasn't landed yet — either way, the
+             opening statement genuinely isn't ready, so keep showing this
+             instead of leaving the slot blank (found as a real bug, spec
+             0019 verification). Deliberately not gated on arguments().length
+             — round 1 bubbles may already be rendering below while this
+             still shows, which is accurate: the opening statement really
+             isn't loaded into view yet. -->
         <div class="thinking-row">
           <span class="thinking-label">Generating opening statement&hellip;</span>
           <span class="typing-indicator"><span></span><span></span><span></span></span>
@@ -57,17 +79,19 @@
       } @else if (arguments().length === 0) {
         <p class="reading-empty">No arguments yet.</p>
       }
-      @for (round of roundNumbers(); track round) {
+      @for (round of roundsToRender(); track round) {
         <div class="round-divider">
           <span class="round-line"></span>
           <span class="round-label">Round {{ round }}</span>
           <span class="round-line"></span>
         </div>
         @for (arg of argumentsInRound(round); track arg.id) {
-          <div class="bubble-row" [class.left]="isLeft(arg)">
-            <div class="bubble" [class.left]="isLeft(arg)">
+          <div class="bubble-row" [class.left]="isLeft(arg.agentId)">
+            <span class="avatar" [class.agent-b]="agentSlot(arg.agentId) === 'b'">{{ initialFor(arg.agentName) }}</span>
+            <div class="bubble" [class.left]="isLeft(arg.agentId)" [class.agent-b]="agentSlot(arg.agentId) === 'b'">
               <div class="bubble-head">
                 <span class="bubble-name">{{ arg.agentName }} &middot; {{ arg.agentRole }}</span>
+                <span class="bubble-time">{{ timeFor(arg.createdAt) }}</span>
               </div>
               @if (arg.respondsToLabel) {
                 <div class="bubble-cite">&#8617; {{ arg.respondsToLabel }}</div>
@@ -83,6 +107,19 @@
             </div>
           </div>
         }
+        @if (generatingTurn(); as gt) {
+          @if (gt.stage === 'argument' && (gt.roundNumber ?? -1) + 1 === round) {
+            <div class="bubble-row" [class.left]="isLeft(gt.agentPersonaId)">
+              <span class="avatar" [class.agent-b]="agentSlot(gt.agentPersonaId) === 'b'">{{ initialFor(gt.agentName) }}</span>
+              <div class="bubble bubble--thinking" [class.left]="isLeft(gt.agentPersonaId)" [class.agent-b]="agentSlot(gt.agentPersonaId) === 'b'">
+                <div class="bubble-head">
+                  <span class="bubble-name">{{ gt.agentName }} is thinking&hellip;</span>
+                </div>
+                <span class="typing-indicator"><span></span><span></span><span></span></span>
+              </div>
+            </div>
+          }
+        }
       }
       @if (d.verdict; as v) {
         <div class="round-divider">
@@ -91,10 +128,28 @@
           <span class="round-line"></span>
         </div>
         <div class="verdict-entry">
-          <div class="verdict-head">Verdict &middot; {{ d.judge_persona.name }}</div>
+          <div class="verdict-head">
+            <span class="avatar avatar-judge avatar-inline">{{ initialFor(d.judge_persona.name) }}</span>
+            Verdict &middot; {{ d.judge_persona.name }}
+          </div>
           <p class="verdict-decision">{{ v.decision }} &middot; {{ v.confidence }}</p>
           <p class="verdict-reasoning">{{ v.reasoning }}</p>
         </div>
+      } @else if (generatingTurn(); as gt) {
+        @if (gt.stage === 'verdict') {
+          <div class="round-divider">
+            <span class="round-line"></span>
+            <span class="round-label">Verdict</span>
+            <span class="round-line"></span>
+          </div>
+          <div class="verdict-entry verdict-entry--thinking">
+            <div class="verdict-head">
+              <span class="avatar avatar-judge avatar-inline">{{ initialFor(gt.agentName) }}</span>
+              {{ gt.agentName }} is preparing a verdict&hellip;
+            </div>
+            <span class="typing-indicator"><span></span><span></span><span></span></span>
+          </div>
+        }
       }
     </div>
   </div>

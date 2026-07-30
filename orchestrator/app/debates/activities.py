@@ -81,6 +81,29 @@ async def persist_argument(
 
 
 @activity.defn
+async def publish_turn_started(
+    debate_id: int, agent_persona_id: int, agent_name: str, stage: str, round_number: int | None
+) -> None:
+    """Live "who's generating right now" signal (spec 0018) — distinct from
+    decision 12's token-by-token ask, which ADR 0006 verified isn't possible
+    with the current structured-output LLM call shape. This doesn't carry
+    any content, just identifies which turn's LLM call has *started*, so the
+    frontend can show a "thinking" indicator instead of silence until the
+    corresponding complete event lands. `agent_name` rides in the event
+    itself (not just an id) so the frontend can render immediately, even for
+    the very first turn of a debate, before any Argument data exists to look
+    a name up from."""
+    bind_debate_context(debate_id=debate_id)
+    await _publish(debate_id, {
+        "type": "turn_started",
+        "agent_persona_id": agent_persona_id,
+        "agent_name": agent_name,
+        "stage": stage,
+        "round_number": round_number,
+    })
+
+
+@activity.defn
 async def check_convergence(debate_id: int, round_number: int) -> dict:
     """Decision 6's structured signals: position stability, confidence-
     spread shrinkage, no new rebuttals, and uncited position changes
@@ -163,6 +186,13 @@ async def persist_opening_statement(debate_id: int, opening_statement: str) -> N
     bind_debate_context(debate_id=debate_id)
     await queries.set_debate_opening_statement(debate_id, opening_statement)
     logger.info("opening statement persisted")
+    # Found during spec 0019 verification: without this, the frontend only
+    # learned the opening statement was ready via whatever WS event happened
+    # to arrive next — which, once turn_started (spec 0018) existed, was the
+    # first participant's turn_started, and that one deliberately doesn't
+    # trigger a re-fetch. Result: the opening-statement slot went blank for
+    # ~2s between the two. This is the actual missing signal.
+    await _publish(debate_id, {"type": "opening_statement_complete"})
 
 
 @activity.defn
@@ -194,6 +224,7 @@ ALL_ACTIVITIES = [
     fetch_debate_context,
     fetch_arguments,
     persist_argument,
+    publish_turn_started,
     check_convergence,
     set_debate_status,
     set_debate_round,

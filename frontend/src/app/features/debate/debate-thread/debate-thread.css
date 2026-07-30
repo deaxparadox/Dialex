@@ -135,26 +135,69 @@
 
 .bubble-row {
   display: flex;
+  align-items: flex-end;
+  gap: 8px;
   justify-content: flex-end;
   margin-bottom: 14px;
 }
-.bubble-row.left { justify-content: flex-start; }
+/* Avatar stays on the outer edge regardless of DOM order (avatar, bubble) —
+   reversing the flex direction for a right-aligned row puts the bubble
+   first visually and the avatar last, i.e. still on the outside (spec 0019). */
+.bubble-row:not(.left) { flex-direction: row-reverse; }
+
+/* Small round avatar beside each bubble, not inside the text (spec 0019) —
+   normal chat-app convention, and a second, distinct "who" signal from the
+   bubble's own background tint. */
+.avatar {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ground);
+  background: var(--agent-a);
+}
+.avatar.agent-b { background: var(--agent-b); }
+.avatar-judge { background: var(--judge); }
+/* Smaller variant for inline use next to the small uppercase opening/verdict
+   head labels, where a full 26px bubble avatar would look oversized. */
+.avatar-inline { width: 16px; height: 16px; font-size: 8.5px; }
 
 .bubble {
   max-width: 72%;
   padding: 12px 15px;
   border-radius: 16px 4px 16px 16px;
-  background: var(--page);
+  /* Distinct background per agent (spec 0019) — a separate "who" signal
+     from .bubble-meta's leaning color, which stays about "how," not "who." */
+  background: var(--agent-a-bg);
   border: 1px solid var(--line);
 }
 .bubble.left { border-radius: 4px 16px 16px 16px; }
+.bubble.agent-b { background: var(--agent-b-bg); }
 
-.bubble-head { margin-bottom: 4px; }
+.bubble-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
 .bubble-name {
   font-family: var(--font-display);
   font-size: 13px;
   font-weight: 600;
   color: var(--ink);
+}
+.bubble-time {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-faint);
 }
 .bubble-cite {
   font-size: 11.5px;
@@ -172,6 +215,9 @@
   font-weight: 600;
   margin-top: 8px;
 }
+/* Hugs its dots instead of stretching to the bubble's max-width, matching
+   the same "pending" sizing already used in consultation-chat.css. */
+.bubble--thinking { width: fit-content; }
 
 .verdict-entry {
   background: var(--page);
@@ -179,6 +225,9 @@
   border-radius: 14px;
   padding: 16px 18px;
 }
+/* Dashed border while still in progress — a cheap, immediate "not final
+   yet" cue distinct from the completed entry's solid border (spec 0019). */
+.verdict-entry--thinking { border-style: dashed; }
 
 /* Judge-authored, not either debating agent's — a plain block, not a
    left/right bubble (spec 0017). */
@@ -189,7 +238,11 @@
   padding: 16px 18px;
   margin-bottom: 20px;
 }
+.opening-entry--thinking { border-style: dashed; }
 .opening-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -287,6 +340,9 @@
 }
 
 .verdict-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.05em;

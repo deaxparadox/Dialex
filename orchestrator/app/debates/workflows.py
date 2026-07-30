@@ -72,6 +72,12 @@ class DebateWorkflow:
                 "case_payload": case["payload"],
                 "result": {},
             }
+            await workflow.execute_activity(
+                activities.publish_turn_started,
+                args=[debate_id, judge["id"], judge["name"], "opening_statement", None],
+                start_to_close_timeout=_ACTIVITY_TIMEOUT,
+                retry_policy=_ACTIVITY_RETRY,
+            )
             opening_result = await graph(JUDGE_OPENING_GRAPH).compile().ainvoke(opening_state)
             await workflow.execute_activity(
                 activities.persist_opening_statement,
@@ -112,6 +118,18 @@ class DebateWorkflow:
                     ),
                     "result": {},
                 }
+                await workflow.execute_activity(
+                    activities.publish_turn_started,
+                    args=[
+                        debate_id,
+                        participant["agent_persona_id"],
+                        participant["persona_snapshot"]["name"],
+                        "argument",
+                        round_number,
+                    ],
+                    start_to_close_timeout=_ACTIVITY_TIMEOUT,
+                    retry_policy=_ACTIVITY_RETRY,
+                )
                 arg_result = await graph(ARGUMENT_GRAPH).compile().ainvoke(arg_state)
                 await workflow.execute_activity(
                     activities.persist_argument,
@@ -166,6 +184,12 @@ class DebateWorkflow:
             "decision_options": case_type_config.get("decision_options") or [],
             "result": {},
         }
+        await workflow.execute_activity(
+            activities.publish_turn_started,
+            args=[debate_id, judge["id"], judge["name"], "verdict", None],
+            start_to_close_timeout=_ACTIVITY_TIMEOUT,
+            retry_policy=_ACTIVITY_RETRY,
+        )
         closing_result = await graph(JUDGE_CLOSING_GRAPH).compile().ainvoke(closing_state)
 
         # Judge always produces a Verdict, even on NO_CONSENSUS (decision 8)

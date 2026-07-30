@@ -127,8 +127,8 @@ describe('DebateThread', () => {
     expect(component.argumentsInRound(1).map((a) => a.id)).toEqual(['1']);
     expect(component.argumentsInRound(2).map((a) => a.id)).toEqual(['2']);
     // First-seen agent (Agent R, round 1) renders left; the second (Agent G) right.
-    expect(component.isLeft(component.arguments()[0])).toBe(true);
-    expect(component.isLeft(component.arguments()[1])).toBe(false);
+    expect(component.isLeft(component.arguments()[0].agentId)).toBe(true);
+    expect(component.isLeft(component.arguments()[1].agentId)).toBe(false);
     expect(component.arguments()[1].respondsToLabel).toBe('Responds to Agent R, round 1');
 
     httpMock.verify();
@@ -177,7 +177,7 @@ describe('DebateThread', () => {
 
     const [, , onMessage, onUnexpectedClose] = fakeStream.connect.mock.calls[0];
 
-    onMessage();
+    onMessage({ type: 'status_change', status: 'ARGUING' });
     httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/`).flush(MOCK_ACTIVE_DEBATE);
     httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/arguments/`).flush(MOCK_ARGUMENTS);
     await fixture.whenStable();
@@ -188,6 +188,58 @@ describe('DebateThread', () => {
     fixture.destroy(); // clears the polling interval the fallback just started
     httpMock.verify();
     warnSpy.mockRestore();
+  });
+
+  it('sets generatingTurn on turn_started without re-fetching, and clears it once the turn completes (spec 0018/0019)', async () => {
+    const fakeStream = { connect: vi.fn(), disconnect: vi.fn() };
+    configureWithRoute({ id: '3' }, {}, [
+      { provide: DebateStream, useValue: fakeStream },
+      { provide: Auth, useValue: { getAccessToken: () => 'test-token' } },
+    ]);
+    const fixture = TestBed.createComponent(DebateThread);
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    await fixture.whenStable();
+    httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/`).flush(MOCK_ACTIVE_DEBATE);
+    httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/arguments/`).flush(MOCK_ARGUMENTS);
+    await Promise.resolve();
+    await Promise.resolve();
+    httpMock.expectOne(`${environment.djangoApiBase}/api/cases/7/`).flush(MOCK_CASE);
+    await fixture.whenStable();
+
+    const [, , onMessage] = fakeStream.connect.mock.calls[0];
+    const component = fixture.componentInstance;
+
+    onMessage({
+      type: 'turn_started',
+      agent_persona_id: 4,
+      agent_name: 'New Agent',
+      stage: 'argument',
+      round_number: 2,
+    });
+    await fixture.whenStable();
+
+    expect(component.generatingTurn()).toEqual({
+      agentPersonaId: 4,
+      agentName: 'New Agent',
+      stage: 'argument',
+      roundNumber: 2,
+    });
+    // A brand-new agent never seen in arguments() still gets a side to render on.
+    expect(component.isLeft(4)).toBe(false);
+    // Its round (backend round_number 2 -> display round 3) is included even
+    // though no real argument for it exists yet.
+    expect(component.roundsToRender()).toEqual([1, 2, 3]);
+    httpMock.expectNone(`${environment.djangoApiBase}/api/debates/3/`); // no re-fetch for a transient event
+
+    onMessage({ type: 'argument_complete', argument_id: 99 });
+    httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/`).flush(MOCK_ACTIVE_DEBATE);
+    httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/arguments/`).flush(MOCK_ARGUMENTS);
+    await fixture.whenStable();
+
+    expect(component.generatingTurn()).toBeNull();
+
+    httpMock.verify();
   });
 
   it('shows the not-found state on a 404', async () => {

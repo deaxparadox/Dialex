@@ -25,8 +25,19 @@ export interface DebateArgument {
   position: string | null; // null while still generating
   confidence: number | null;
   text: string;
+  createdAt: string;
   respondsToId: string | null;
   respondsToLabel: string | null;
+}
+
+/** A turn's LLM call has started but not finished yet (spec 0018/0019) — no
+ * content, just enough to show a live "who's generating" indicator instead
+ * of silence until the corresponding complete event lands. */
+export interface GeneratingTurn {
+  agentPersonaId: number;
+  agentName: string;
+  stage: 'opening_statement' | 'argument' | 'verdict';
+  roundNumber: number | null;
 }
 
 const ACTIVE_STATUSES = new Set(['OPEN', 'ARGUING', 'CONVERGING']);
@@ -43,9 +54,16 @@ function mapArgument(api: ApiArgument): DebateArgument {
     position: api.position,
     confidence: api.confidence,
     text: api.content,
+    createdAt: api.created_at,
     respondsToId: api.responds_to_id !== null ? String(api.responds_to_id) : null,
     respondsToLabel: null, // filled in once the full list is known — see fillRespondsToLabels
   };
+}
+
+/** First letter of a name, uppercased — e.g. "Pragmatist" → "P" (spec 0015,
+ * removed in 0016, reintroduced in 0019 for the avatar chip specifically). */
+function initialFor(name: string): string {
+  return name.charAt(0).toUpperCase();
 }
 
 function fillRespondsToLabels(args: DebateArgument[]): DebateArgument[] {
@@ -90,14 +108,48 @@ export class DebateThread {
   readonly arguments = signal<DebateArgument[]>([]);
   readonly roundNumbers = computed(() => [...new Set(this.arguments().map((a) => a.round))].sort((a, b) => a - b));
 
+  /** `roundNumbers` plus the in-progress round if a `turn_started` (spec
+   * 0018) arrives for a round that has no real arguments yet — otherwise
+   * the very first turn of a new round has no round-divider to render its
+   * "thinking" bubble under. */
+  readonly roundsToRender = computed<number[]>(() => {
+    const rounds = new Set(this.roundNumbers());
+    const gt = this.generatingTurn();
+    if (gt?.stage === 'argument' && gt.roundNumber !== null) rounds.add(gt.roundNumber + 1);
+    return [...rounds].sort((a, b) => a - b);
+  });
+
+  /** Live "who's generating right now" signal (spec 0018/0019) — cleared the
+   * moment the corresponding complete event arrives and fresh data is fetched. */
+  readonly generatingTurn = signal<GeneratingTurn | null>(null);
+
+  /** `generatingTurn`, but only when it's actually the opening-statement
+   * turn — null (not just "some other stage") once round 1's turn_started
+   * arrives, so the template's @else-if chain correctly falls through to the
+   * "not ready yet" fallback instead of getting stuck rendering nothing.
+   * Found as a real bug during spec 0019 verification: the template used to
+   * check `generatingTurn(); as gt` directly, which is truthy for *any*
+   * stage — once it moved to 'argument', the opening-statement branch was
+   * "claimed" but rendered nothing, leaving a ~2s blank gap before the next
+   * refetch happened to land. */
+  readonly openingGeneratingTurn = computed(() => {
+    const gt = this.generatingTurn();
+    return gt?.stage === 'opening_statement' ? gt : null;
+  });
+
   /** Stable first-seen agentId order — index 0 renders left, everyone else
-   * right (spec 0016). Every debate today has exactly 2 participants; a
-   * hypothetical 3rd would stack on the right, an accepted simplification. */
+   * right (spec 0016). Extended (spec 0019) to also seed from a live
+   * `generatingTurn` so the very first "thinking" bubble of a debate — before
+   * any real argument exists — still has a side to render on. Every debate
+   * today has exactly 2 participants; a hypothetical 3rd would stack on the
+   * right/reuse agent-b's color, an accepted simplification. */
   private readonly agentOrder = computed<number[]>(() => {
     const seen: number[] = [];
     for (const a of this.arguments()) {
       if (!seen.includes(a.agentId)) seen.push(a.agentId);
     }
+    const gt = this.generatingTurn();
+    if (gt?.stage === 'argument' && !seen.includes(gt.agentPersonaId)) seen.push(gt.agentPersonaId);
     return seen;
   });
 
@@ -122,12 +174,13 @@ export class DebateThread {
       this.stopPolling();
     });
 
-    // Auto-scroll to the newest argument as the thread grows (same pattern
-    // already used in consultation-chat.ts) — replaces spec 0015's
+    // Auto-scroll to the newest argument/indicator as the thread grows (same
+    // pattern already used in consultation-chat.ts) — replaces spec 0015's
     // selection-based live-follow, and with it the race condition that
     // depended on a "selected argument" concept that no longer exists.
     afterRenderEffect(() => {
       this.arguments();
+      this.generatingTurn();
       const el = this.threadContainer()?.nativeElement;
       if (el) el.scrollTop = el.scrollHeight;
     });
@@ -185,7 +238,10 @@ export class DebateThread {
   }
 
   /** Primary live-update path (spec 0014) — instant push instead of the
-   * `startPolling` fallback below. */
+   * `startPolling` fallback below. `turn_started` (spec 0018) carries no
+   * persisted content, so it just updates `generatingTurn` directly; the
+   * other event types mean "something changed, go re-fetch" (ADR 0006
+   * decision 3), same as before. */
   private openStream(debateId: number): void {
     if (this.streaming) return;
     const token = this.auth.getAccessToken();
@@ -200,7 +256,19 @@ export class DebateThread {
     this.debateStream.connect(
       debateId,
       token,
-      () => void this.loadDebate(debateId),
+      (event) => {
+        if (event.type === 'turn_started') {
+          this.generatingTurn.set({
+            agentPersonaId: event.agent_persona_id,
+            agentName: event.agent_name,
+            stage: event.stage,
+            roundNumber: event.round_number,
+          });
+        } else {
+          this.generatingTurn.set(null); // that turn is done — fresh data is coming
+          void this.loadDebate(debateId);
+        }
+      },
       () => {
         this.streaming = false;
         console.warn(`WebSocket dropped for debate ${debateId}, falling back to polling`);
@@ -260,8 +328,23 @@ export class DebateThread {
     return this.arguments().filter((a) => a.round === round);
   }
 
-  isLeft(arg: DebateArgument): boolean {
-    return this.agentOrder().indexOf(arg.agentId) === 0;
+  isLeft(agentId: number): boolean {
+    return this.agentOrder().indexOf(agentId) === 0;
+  }
+
+  /** Which of the 2 agent-identity colors (spec 0019) this agent gets —
+   * keyed off the same first-seen order `isLeft` uses, so it's stable
+   * across every round. A hypothetical 3rd+ agent reuses 'b'. */
+  agentSlot(agentId: number): 'a' | 'b' {
+    return this.agentOrder().indexOf(agentId) === 0 ? 'a' : 'b';
+  }
+
+  initialFor(name: string): string {
+    return initialFor(name);
+  }
+
+  timeFor(iso: string): string {
+    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
   colorFor(arg: DebateArgument): string {
