@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-30 (debate-thread: opening statement + loading state)
+
+- Fixed the "page looks frozen after clicking Start debate" bug — root-caused against a real run: the WS/streaming pipeline was fine the whole time (events pushed within single-digit milliseconds of their DB writes), but the workflow's judge-authored opening statement took 21 seconds on its own before the first `Argument` existed, and `Debate.opening_statement` — already fetched by the frontend — had never been rendered anywhere.
+- The opening statement now renders as the thread's first entry once ready ("Opening Statement · {judge name}"); a "Generating opening statement…" typing-dots indicator (the same visual pattern already used in `consultation-chat.css`, not a new one) fills the gap before it exists, replacing a silent static "No arguments yet."
+- **Found and fixed a regression within the same pass**: the first implementation gated the loading indicator on `isActive()`, which deliberately includes the `OPEN` status for an unrelated reason (starting the WS stream early) — this made the indicator fire before "Start debate" was even clicked. Caught by real-browser verification, fixed with an explicit `d.status !== 'OPEN'` check, re-verified with DOM assertions (not just a visual glance) confirming no loading element mounts pre-start.
+- 18 Angular tests pass. See [docs/specs/0017-debate-thread-opening-statement-and-loading-state.md](docs/specs/0017-debate-thread-opening-statement-and-loading-state.md).
+
 ## 2026-07-30 (debate-thread center-stage restyle: chat thread, not scatter plot)
 
 - Replaced `.main-split`'s scatter-plot node graph + separate click-to-read side panel with one scrolling chat-thread column — bubbles left/right by agent (stable first-seen order), full argument text inline (no more click-to-reveal), round-divider labels, an inline "↩ Responds to X, round N" citation line for rebuttals, and the verdict as the thread's final entry ("Verdict · {judge name}"). Restyle only — same `content`/`position`/`confidence`/`respondsToId` data already fetched via the existing `GET /api/debates/{id}/arguments/`, no backend/schema change.

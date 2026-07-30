@@ -180,6 +180,63 @@
   padding: 16px 18px;
 }
 
+/* Judge-authored, not either debating agent's — a plain block, not a
+   left/right bubble (spec 0017). */
+.opening-entry {
+  background: var(--page);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
+}
+.opening-head {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--judge);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.opening-text {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  margin: 0;
+}
+
+/* Same typing-dots pattern already established in consultation-chat.css —
+   shown while the debate is running but nothing exists to render yet
+   (spec 0017), instead of a silent, static "No arguments yet." */
+.thinking-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  color: var(--ink-faint);
+  font-size: 13px;
+}
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.typing-indicator span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-muted);
+  animation: typing-bounce 1.1s infinite ease-in-out;
+}
+.typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .typing-indicator span { animation: none; opacity: 0.8; }
+}
+
 /* Confidence-spread/positions-stable/uncited-changes stats need real
    ConvergenceCheck data, not fetched in this milestone (spec 0008) — the
    stat-strip that used to show hardcoded mock numbers is gone rather than

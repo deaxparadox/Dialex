@@ -44,7 +44,17 @@
     </div>
 
     <div class="thread-panel" #threadContainer>
-      @if (arguments().length === 0) {
+      @if (d.opening_statement) {
+        <div class="opening-entry">
+          <div class="opening-head">Opening Statement &middot; {{ d.judge_persona.name }}</div>
+          <p class="opening-text">{{ d.opening_statement }}</p>
+        </div>
+      } @else if (isActive() && d.status !== 'OPEN') {
+        <div class="thinking-row">
+          <span class="thinking-label">Generating opening statement&hellip;</span>
+          <span class="typing-indicator"><span></span><span></span><span></span></span>
+        </div>
+      } @else if (arguments().length === 0) {
         <p class="reading-empty">No arguments yet.</p>
       }
       @for (round of roundNumbers(); track round) {
