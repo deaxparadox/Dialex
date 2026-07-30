@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-30 (debate-thread: fix inverted agent sides + bottom-aligned avatars)
+
+- Fixed a real bug the user caught immediately after using the previous milestone: agent bubble sides were inverted (the agent meant to render on the right was rendering on the left, and vice versa) and every avatar sat at the bottom of its bubble instead of the top.
+- Root cause: `.bubble-row` combined `flex-direction: row-reverse` with a universal `justify-content: flex-end` (no `.left` override) — that combination packs content toward row-reverse's main-*end*, which is the left edge, the opposite of what was intended. `align-items: flex-end` was also simply the wrong value for a multi-line bubble.
+- Fixed by dropping the row-reverse trick for an explicit `order` on the avatar (avatar renders before the bubble on a `.left` row, after it otherwise — no directional ambiguity to get backwards again) and `align-items: flex-start`.
+- Verified with real `getBoundingClientRect()` measurements across 2 rounds: both agents on consistent, correct, opposite sides; avatar top edge exactly equal to bubble top edge in all 4 measured instances; avatar sitting just outside the bubble's outer edge with no overlap. 19 Angular tests pass (unaffected, CSS-only), zero console errors. See [docs/specs/0019-debate-thread-live-turn-indicator-and-polish.md](docs/specs/0019-debate-thread-live-turn-indicator-and-polish.md) (amended in place — a straightforward correction, not a new decision).
+
 ## 2026-07-30 (debate-thread: live "who's generating" turn indicators + polish)
 
 - Traced a user complaint ("no interactivity of who is generating") back to the original requirement (decision 12/PRD/spec 0001's mock wanted token-by-token streaming with a "currently generating" indicator). ADR 0006 correctly ruled out *token content* — but "which agent/judge is active right now" never needed token content, and that part simply never got built past a one-off opening-statement indicator (spec 0017).

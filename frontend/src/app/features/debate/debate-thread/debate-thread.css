@@ -135,20 +135,30 @@
 
 .bubble-row {
   display: flex;
-  align-items: flex-end;
+  /* Top-aligned, not bottom (spec 0019 had this backwards — the avatar
+     rendered at the bottom of a multi-line bubble instead of beside the
+     name/header line where it belongs). */
+  align-items: flex-start;
   gap: 8px;
   justify-content: flex-end;
   margin-bottom: 14px;
 }
-/* Avatar stays on the outer edge regardless of DOM order (avatar, bubble) —
-   reversing the flex direction for a right-aligned row puts the bubble
-   first visually and the avatar last, i.e. still on the outside (spec 0019). */
-.bubble-row:not(.left) { flex-direction: row-reverse; }
+.bubble-row.left { justify-content: flex-start; }
 
 /* Small round avatar beside each bubble, not inside the text (spec 0019) —
    normal chat-app convention, and a second, distinct "who" signal from the
-   bubble's own background tint. */
+   bubble's own background tint. Position within the row is controlled by
+   `order`, not DOM order + flex-direction reversal — the row-reverse
+   approach spec 0019 originally used got the two sides backwards (combining
+   `flex-direction: row-reverse` with `justify-content: flex-end` packs
+   content toward row-reverse's main-*end*, which is the LEFT edge — the
+   opposite of what was intended — confirmed as a real bug, not a preference,
+   from a real screenshot: the right-assigned agent was rendering on the
+   left with its avatar at the bottom). `order` sidesteps that class of bug
+   entirely: the avatar renders before the bubble (outer-left) on a `.left`
+   row, and after it (outer-right) otherwise — independent of justify-content. */
 .avatar {
+  order: 2;
   flex-shrink: 0;
   width: 26px;
   height: 26px;
@@ -162,6 +172,7 @@
   color: var(--ground);
   background: var(--agent-a);
 }
+.bubble-row.left .avatar { order: -1; }
 .avatar.agent-b { background: var(--agent-b); }
 .avatar-judge { background: var(--judge); }
 /* Smaller variant for inline use next to the small uppercase opening/verdict
