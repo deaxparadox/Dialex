@@ -43,118 +43,49 @@
       </div>
     </div>
 
-    <div class="main-split">
-      <div class="graph-panel">
-        <div class="axis-label"><span>&larr; divergent</span><span>convergent &rarr;</span></div>
-
-        <div class="plot-area">
-          <svg
-            class="plot"
-            viewBox="0 0 900 460"
-            preserveAspectRatio="xMidYMid meet"
-            role="img"
-            aria-label="Debate thread: each argument plotted by round and by how strongly it leans toward rejecting or approving the case; lines connect an argument to the one it responds to."
-          >
-            <defs>
-              <linearGradient id="wash" x1="0" x2="1">
-                <stop offset="0%" stop-color="var(--divergence)" />
-                <stop offset="100%" stop-color="var(--convergence)" />
-              </linearGradient>
-            </defs>
-            <rect x="60" y="20" width="780" height="8" fill="url(#wash)" class="wash" rx="4" />
-
-            @for (r of roundNumbers(); track r) {
-              <line x1="60" [attr.y1]="yForRound(r)" x2="840" [attr.y2]="yForRound(r)" class="gridline" />
-              <text x="30" [attr.y]="yForRound(r) + 4" class="round-label">R{{ r }}</text>
-            }
-
-            @for (c of connectors(); track c.fromId + c.toId) {
-              <path [attr.d]="connectorPath(c)" class="connector" />
-            }
-
-            @for (arg of arguments(); track arg.id) {
-              <g
-                class="node-hit"
-                [class.selected]="arg.id === selectedId()"
-                tabindex="0"
-                role="button"
-                [attr.aria-label]="'Read ' + arg.agentName + ', round ' + arg.round"
-                (click)="select(arg)"
-                (keydown.enter)="select(arg)"
-              >
-                <circle
-                  [attr.cx]="xFor(arg)"
-                  [attr.cy]="yFor(arg)"
-                  r="15"
-                  class="node-ring"
-                  [attr.stroke]="colorFor(arg)"
-                />
-                <text [attr.x]="xFor(arg)" [attr.y]="yFor(arg) + 1" class="node-monogram">
-                  {{ initialFor(arg) }}
-                </text>
-                <text [attr.x]="xFor(arg)" [attr.y]="yFor(arg) + 28" class="node-tag">
-                  @if (arg.position) {
-                    {{ arg.position }} &middot; {{ arg.confidence }}
-                  } @else {
-                    generating&hellip;
-                  }
-                </text>
-              </g>
-            }
-          </svg>
+    <div class="thread-panel" #threadContainer>
+      @if (arguments().length === 0) {
+        <p class="reading-empty">No arguments yet.</p>
+      }
+      @for (round of roundNumbers(); track round) {
+        <div class="round-divider">
+          <span class="round-line"></span>
+          <span class="round-label">Round {{ round }}</span>
+          <span class="round-line"></span>
         </div>
-
-        <div class="legend">
-          <span><span class="dot" style="background:var(--divergence)"></span> Reject-leaning</span>
-          <span><span class="dot" style="background:var(--convergence)"></span> Approve-leaning</span>
-          <span><span class="dot" style="background:var(--ink-faint)"></span> Still generating</span>
-          <span style="color:var(--judge)">&#8213;&#8213; dotted line = responds to</span>
-          @for (entry of agentLegend(); track entry.agentId) {
-            <span class="agent-key"><b>{{ entry.initial }}</b> {{ entry.name }}</span>
-          }
-        </div>
-      </div>
-
-      <div class="reading-panel" [class.open]="mode() === 'detail'">
-        <div class="reading-panel-inner" [class.split]="!!d.verdict">
-          <span class="panel-hint" tabindex="0" aria-label="Hint">
-            ?
-            <span class="tooltip">Click any point on the thread to read that argument here.</span>
-          </span>
-          <div class="reading-scroll">
-            @if (selectedArgument(); as sel) {
-              <div class="reading-head">
-                <span class="rh-name">{{ sel.agentName }} &middot; {{ sel.agentRole }}</span>
-                <span class="rh-round">round {{ sel.round }}</span>
+        @for (arg of argumentsInRound(round); track arg.id) {
+          <div class="bubble-row" [class.left]="isLeft(arg)">
+            <div class="bubble" [class.left]="isLeft(arg)">
+              <div class="bubble-head">
+                <span class="bubble-name">{{ arg.agentName }} &middot; {{ arg.agentRole }}</span>
               </div>
-              <span class="rh-pos" [style.color]="colorFor(sel)">
-                @if (sel.position) {
-                  {{ sel.position }} &middot; {{ sel.confidence }}
+              @if (arg.respondsToLabel) {
+                <div class="bubble-cite">&#8617; {{ arg.respondsToLabel }}</div>
+              }
+              <div class="bubble-text">{{ arg.text }}</div>
+              <div class="bubble-meta" [style.color]="colorFor(arg)">
+                @if (arg.position) {
+                  {{ arg.position }} &middot; {{ arg.confidence }}
                 } @else {
                   generating&hellip;
                 }
-              </span>
-              <div class="reading-body">
-                @if (sel.respondsToLabel) {
-                  <span class="cite">{{ sel.respondsToLabel }}</span> &mdash;
-                }
-                {{ revealedText() }}<span class="reading-caret"></span>
-              </div>
-            } @else {
-              <p class="reading-empty">No arguments yet.</p>
-            }
-          </div>
-          @if (d.verdict; as v) {
-            <div class="verdict-card">
-              <div class="verdict-head">Verdict &middot; {{ d.judge_persona.name }}</div>
-              <p class="verdict-decision">{{ v.decision }} &middot; {{ v.confidence }}</p>
-              <div class="verdict-reasoning-scroll">
-                <p class="verdict-reasoning">{{ v.reasoning }}</p>
               </div>
             </div>
-          }
+          </div>
+        }
+      }
+      @if (d.verdict; as v) {
+        <div class="round-divider">
+          <span class="round-line"></span>
+          <span class="round-label">Verdict</span>
+          <span class="round-line"></span>
         </div>
-      </div>
+        <div class="verdict-entry">
+          <div class="verdict-head">Verdict &middot; {{ d.judge_persona.name }}</div>
+          <p class="verdict-decision">{{ v.decision }} &middot; {{ v.confidence }}</p>
+          <p class="verdict-reasoning">{{ v.reasoning }}</p>
+        </div>
+      }
     </div>
   </div>
 }

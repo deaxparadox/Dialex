@@ -103,7 +103,7 @@ describe('DebateThread', () => {
     expect(fixture.componentInstance.loading()).toBe(false);
   });
 
-  it('fetches and renders real data for a given :id, defaulting selection to the latest argument', async () => {
+  it('fetches and renders real data for a given :id, grouping by round and left/right by agent (spec 0016)', async () => {
     configureWithRoute({ id: '3' });
     const fixture = TestBed.createComponent(DebateThread);
     const httpMock = TestBed.inject(HttpTestingController);
@@ -123,9 +123,12 @@ describe('DebateThread', () => {
     expect(component.loading()).toBe(false);
     expect(component.notFound()).toBe(false);
     expect(component.arguments().length).toBe(2);
-    // Defaults to the last argument (round order) when no ?selected= param — no
-    // "streaming" concept exists for real data (spec 0008).
-    expect(component.selectedId()).toBe('2');
+    expect(component.roundNumbers()).toEqual([1, 2]);
+    expect(component.argumentsInRound(1).map((a) => a.id)).toEqual(['1']);
+    expect(component.argumentsInRound(2).map((a) => a.id)).toEqual(['2']);
+    // First-seen agent (Agent R, round 1) renders left; the second (Agent G) right.
+    expect(component.isLeft(component.arguments()[0])).toBe(true);
+    expect(component.isLeft(component.arguments()[1])).toBe(false);
     expect(component.arguments()[1].respondsToLabel).toBe('Responds to Agent R, round 1');
 
     httpMock.verify();
