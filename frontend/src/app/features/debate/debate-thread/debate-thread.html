@@ -30,6 +30,7 @@
           <span><b>Status</b>&nbsp; {{ d.status }}</span>
           <span><b>Strategy</b>&nbsp; {{ d.turn_strategy }}</span>
           <span><b>Round</b>&nbsp; {{ d.current_round }} of {{ d.max_rounds }}</span>
+          <span><b>Judge</b>&nbsp; {{ d.judge_persona.name }}</span>
         </div>
         @if (d.status === 'OPEN') {
           <button class="start-button" [disabled]="starting()" (click)="startDebate()">
@@ -89,7 +90,7 @@
                   [attr.stroke]="colorFor(arg)"
                 />
                 <text [attr.x]="xFor(arg)" [attr.y]="yFor(arg) + 1" class="node-monogram">
-                  {{ arg.agentName.slice(-1) }}
+                  {{ initialFor(arg) }}
                 </text>
                 <text [attr.x]="xFor(arg)" [attr.y]="yFor(arg) + 28" class="node-tag">
                   @if (arg.position) {
@@ -108,41 +109,48 @@
           <span><span class="dot" style="background:var(--convergence)"></span> Approve-leaning</span>
           <span><span class="dot" style="background:var(--ink-faint)"></span> Still generating</span>
           <span style="color:var(--judge)">&#8213;&#8213; dotted line = responds to</span>
+          @for (entry of agentLegend(); track entry.agentId) {
+            <span class="agent-key"><b>{{ entry.initial }}</b> {{ entry.name }}</span>
+          }
         </div>
       </div>
 
       <div class="reading-panel" [class.open]="mode() === 'detail'">
-        <div class="reading-panel-inner">
+        <div class="reading-panel-inner" [class.split]="!!d.verdict">
           <span class="panel-hint" tabindex="0" aria-label="Hint">
             ?
             <span class="tooltip">Click any point on the thread to read that argument here.</span>
           </span>
-          @if (selectedArgument(); as sel) {
-            <div class="reading-head">
-              <span class="rh-name">{{ sel.agentName }} &middot; {{ sel.agentRole }}</span>
-              <span class="rh-round">round {{ sel.round }}</span>
-            </div>
-            <span class="rh-pos" [style.color]="colorFor(sel)">
-              @if (sel.position) {
-                {{ sel.position }} &middot; {{ sel.confidence }}
-              } @else {
-                generating&hellip;
-              }
-            </span>
-            <div class="reading-body">
-              @if (sel.respondsToLabel) {
-                <span class="cite">{{ sel.respondsToLabel }}</span> &mdash;
-              }
-              {{ revealedText() }}<span class="reading-caret"></span>
-            </div>
-          } @else {
-            <p class="reading-empty">No arguments yet.</p>
-          }
+          <div class="reading-scroll">
+            @if (selectedArgument(); as sel) {
+              <div class="reading-head">
+                <span class="rh-name">{{ sel.agentName }} &middot; {{ sel.agentRole }}</span>
+                <span class="rh-round">round {{ sel.round }}</span>
+              </div>
+              <span class="rh-pos" [style.color]="colorFor(sel)">
+                @if (sel.position) {
+                  {{ sel.position }} &middot; {{ sel.confidence }}
+                } @else {
+                  generating&hellip;
+                }
+              </span>
+              <div class="reading-body">
+                @if (sel.respondsToLabel) {
+                  <span class="cite">{{ sel.respondsToLabel }}</span> &mdash;
+                }
+                {{ revealedText() }}<span class="reading-caret"></span>
+              </div>
+            } @else {
+              <p class="reading-empty">No arguments yet.</p>
+            }
+          </div>
           @if (d.verdict; as v) {
             <div class="verdict-card">
-              <div class="verdict-head">Verdict</div>
+              <div class="verdict-head">Verdict &middot; {{ d.judge_persona.name }}</div>
               <p class="verdict-decision">{{ v.decision }} &middot; {{ v.confidence }}</p>
-              <p class="verdict-reasoning">{{ v.reasoning }}</p>
+              <div class="verdict-reasoning-scroll">
+                <p class="verdict-reasoning">{{ v.reasoning }}</p>
+              </div>
             </div>
           }
         </div>

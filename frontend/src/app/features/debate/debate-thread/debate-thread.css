@@ -131,7 +131,9 @@
   margin-left: 0;
   flex-shrink: 0;
   overflow-x: hidden;
-  overflow-y: auto;
+  /* No overflow-y here (spec 0015) — .reading-scroll and .verdict-reasoning-scroll
+     each scroll themselves now, so the verdict stays at a fixed position/height
+     instead of shifting with the selected argument's text length. */
   background: var(--ground);
   border-radius: 14px;
   transition: width 0.28s ease, margin-left 0.28s ease;
@@ -148,14 +150,28 @@
   /* Fixed inner width so content doesn't reflow/wrap as the outer width animates —
      overflow-x:hidden on the panel clips it until the panel is open. */
   width: 320px;
+  height: 100%;
   padding: 20px;
   position: relative;
   opacity: 0;
   transition: opacity 0.18s ease;
+  display: flex;
+  flex-direction: column;
 }
 .reading-panel.open .reading-panel-inner {
   opacity: 1;
   transition-delay: 0.08s;
+}
+
+/* Pre-verdict: .reading-scroll is the only flex child (besides the
+   absolutely-positioned hint), so flex:1 fills the full panel height exactly
+   like the old single-scroll-region layout did — no regression. Once a
+   verdict exists (.split), .verdict-card becomes a second, fixed-height
+   sibling and .reading-scroll shrinks to make room for it (spec 0015). */
+.reading-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /* Small hover-revealed hint, top-right of the panel, instead of permanent text
@@ -245,8 +261,14 @@
   stroke-width: 1.4;
   stroke-dasharray: 3 3;
   opacity: 0.55;
+  transition: d 0.4s ease;
 }
-.node-ring { fill: var(--ground); stroke-width: 2.5; }
+.node-ring {
+  fill: var(--ground);
+  stroke-width: 2.5;
+  transition: cx 0.4s ease, cy 0.4s ease, stroke 0.3s ease;
+  animation: node-appear 0.5s ease;
+}
 .node-hit.selected .node-ring { stroke-width: 4; }
 .node-monogram {
   font-family: var(--font-mono);
@@ -255,15 +277,30 @@
   fill: var(--ink);
   text-anchor: middle;
   dominant-baseline: central;
+  transition: x 0.4s ease, y 0.4s ease;
 }
 .node-tag {
   font-family: var(--font-mono);
   font-size: 10.5px;
   fill: var(--ink-faint);
   text-anchor: middle;
+  transition: x 0.4s ease, y 0.4s ease;
 }
 .node-hit { cursor: pointer; }
 .node-hit:focus-visible { outline: 2px solid var(--judge); outline-offset: 3px; }
+
+/* New nodes fade/grow in instead of popping into place; existing nodes glide
+   to a new position/color instead of jumping (spec 0015). CSS transitions
+   don't replay on unrelated re-renders, and CSS animations only play once per
+   element instance, so a genuinely new argument (Angular's `@for … track
+   arg.id` gives it a fresh DOM node) animates in without affecting siblings. */
+@keyframes node-appear {
+  from { opacity: 0; r: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .node-ring, .node-monogram, .node-tag, .connector { transition: none; animation: none; }
+}
 
 .legend {
   display: flex;
@@ -276,6 +313,10 @@
 }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend .dot { width: 9px; height: 9px; border-radius: 50%; }
+.agent-key b {
+  font-family: var(--font-mono);
+  color: var(--ink);
+}
 
 /* Confidence-spread/positions-stable/uncited-changes stats need real
    ConvergenceCheck data, not fetched in this milestone (spec 0008) — the
@@ -327,6 +368,10 @@
 }
 
 .verdict-card {
+  /* Fixed height once present (spec 0015) — a flex sibling of .reading-scroll,
+     not part of the same scroll region, so it never shifts with the selected
+     argument's text length above it. */
+  flex: 0 0 auto;
   margin-top: 22px;
   padding-top: 16px;
   border-top: 1px solid var(--line);
@@ -344,6 +389,12 @@
   font-size: 13.5px;
   font-weight: 700;
   margin: 0 0 6px;
+}
+/* Only the (potentially long) reasoning paragraph scrolls internally — the
+   head/decision line above stay always visible, they're short/one-line. */
+.verdict-reasoning-scroll {
+  max-height: 120px;
+  overflow-y: auto;
 }
 .verdict-reasoning {
   font-size: 13px;
@@ -411,5 +462,16 @@
   }
   .reading-panel-inner {
     width: auto;
+    /* Below 720px, .reading-panel sizes itself by max-height, not a definite
+       height — percentage/flex-grow sizing on .reading-scroll has nothing
+       definite to resolve against here, so the split falls back to one
+       scroll region on the whole panel (spec 0015's fixed-height split is a
+       desktop-panel improvement, not a regression on small screens). */
+    height: auto;
+    overflow-y: auto;
+  }
+  .reading-scroll {
+    flex: initial;
+    overflow-y: visible;
   }
 }

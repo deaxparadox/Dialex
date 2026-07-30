@@ -7,6 +7,7 @@ import { DebateStream } from '../data/debate-stream';
 
 export interface DebateArgument {
   id: string;
+  agentId: number;
   agentName: string;
   agentRole: string;
   round: number;
@@ -17,6 +18,13 @@ export interface DebateArgument {
   text: string;
   respondsToId: string | null;
   respondsToLabel: string | null;
+}
+
+export interface AgentLegendEntry {
+  agentId: number;
+  initial: string;
+  name: string;
+  role: string;
 }
 
 interface Connector {
@@ -32,9 +40,15 @@ const PLOT_Y_MAX = 380;
 const ACTIVE_STATUSES = new Set(['OPEN', 'ARGUING', 'CONVERGING']);
 const POLL_INTERVAL_MS = 4000;
 
+// Vertical distance between adjacent lanes (spec 0015) — at least 2×node-radius
+// (15px) plus a small pad, so two same-round, same-position arguments (which
+// share an x too) never fully overlap even in the worst case.
+const LANE_GAP = 36;
+
 function mapArgument(api: ApiArgument): DebateArgument {
   return {
     id: String(api.id),
+    agentId: api.agent_persona.id,
     agentName: api.agent_persona.name,
     agentRole: api.agent_persona.role_description || api.agent_persona.role,
     round: api.round_number + 1, // display 1-indexed; the API's round_number is 0-indexed
@@ -45,6 +59,13 @@ function mapArgument(api: ApiArgument): DebateArgument {
     respondsToId: api.responds_to_id !== null ? String(api.responds_to_id) : null,
     respondsToLabel: null, // filled in once the full list is known — see fillRespondsToLabels
   };
+}
+
+/** First letter of the persona's name, uppercased — e.g. "Pragmatist" → "P".
+ * (Was `.slice(-1)`, the *last* letter, which produced meaningless node
+ * labels like "t"/"d" — spec 0015.) */
+function initialFor(agentName: string): string {
+  return agentName.charAt(0).toUpperCase();
 }
 
 function fillRespondsToLabels(args: DebateArgument[]): DebateArgument[] {
@@ -91,11 +112,43 @@ export class DebateThread {
   );
   readonly roundNumbers = computed(() => [...new Set(this.arguments().map((a) => a.round))].sort((a, b) => a - b));
 
+  /** Stable per-agent lane index, first-seen order (spec 0015) — separates
+   * same-round/same-position nodes vertically instead of them fully
+   * overlapping, and doubles as a consistent per-agent visual identity
+   * (a given agent always occupies the same lane across every round). */
+  private readonly agentOrder = computed<number[]>(() => {
+    const seen: number[] = [];
+    for (const a of this.arguments()) {
+      if (!seen.includes(a.agentId)) seen.push(a.agentId);
+    }
+    return seen;
+  });
+
+  readonly agentLegend = computed<AgentLegendEntry[]>(() => {
+    const byId = new Map(this.arguments().map((a) => [a.agentId, a]));
+    return this.agentOrder().map((agentId) => {
+      const a = byId.get(agentId)!;
+      return { agentId, initial: initialFor(a.agentName), name: a.agentName, role: a.agentRole };
+    });
+  });
+
+  private laneOffset(agentId: number): number {
+    const order = this.agentOrder();
+    const index = order.indexOf(agentId);
+    const n = order.length;
+    if (index < 0 || n <= 1) return 0;
+    return (index - (n - 1) / 2) * LANE_GAP;
+  }
+
   readonly selectedId = signal<string | null>(null);
   readonly selectedArgument = computed(
     () => this.arguments().find((a) => a.id === this.selectedId()) ?? null,
   );
   readonly revealedText = signal('');
+  /** True once the user has ever clicked a node themselves — until then,
+   * the reading panel auto-follows the newest argument live (spec 0015);
+   * after, their manual selection is respected exactly as before. */
+  private readonly userHasSelected = signal(false);
 
   readonly isActive = computed(() => ACTIVE_STATUSES.has(this.debate()?.status ?? ''));
   readonly starting = signal(false);
@@ -139,6 +192,15 @@ export class DebateThread {
         this.selectedId.set(initialId);
         this.revealedText.set(mapped.find((a) => a.id === initialId)?.text ?? '');
         this.syncQueryParams();
+      } else if (!this.userHasSelected() && mapped.length > 0) {
+        // Live-follow (spec 0015): the user hasn't picked anything themselves
+        // yet, so keep advancing to the newest argument as it streams in —
+        // otherwise the panel is stuck on "No arguments yet." forever even as
+        // the graph fills up live. Once they click a node, userHasSelected
+        // flips and this branch never runs again for this page view.
+        const newestId = mapped[mapped.length - 1].id;
+        this.selectedId.set(newestId);
+        this.revealedText.set(mapped.find((a) => a.id === newestId)?.text ?? '');
       } else {
         // A poll tick refreshed the data — keep whatever the user had open,
         // just refresh its text in case it changed (it won't have, but stays correct if it ever does).
@@ -240,6 +302,7 @@ export class DebateThread {
   }
 
   select(arg: DebateArgument) {
+    this.userHasSelected.set(true);
     this.selectedId.set(arg.id);
     this.revealedText.set(arg.text);
     this.syncQueryParams();
@@ -276,7 +339,11 @@ export class DebateThread {
   }
 
   yFor(arg: DebateArgument): number {
-    return this.yForRound(arg.round);
+    return this.yForRound(arg.round) + this.laneOffset(arg.agentId);
+  }
+
+  initialFor(arg: DebateArgument): string {
+    return initialFor(arg.agentName);
   }
 
   colorFor(arg: DebateArgument): string {
