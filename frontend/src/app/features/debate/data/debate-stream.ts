@@ -15,6 +15,19 @@ export type DebateStreamEvent =
       agent_name: string;
       stage: 'opening_statement' | 'argument' | 'verdict';
       round_number: number | null;
+    }
+  | {
+      type: 'turn_token';
+      agent_persona_id: number;
+      stage: 'opening_statement' | 'argument' | 'verdict';
+      round_number: number | null;
+      token: string;
+    }
+  | {
+      type: 'turn_token_reset';
+      agent_persona_id: number;
+      stage: 'opening_statement' | 'argument' | 'verdict';
+      round_number: number | null;
     };
 
 /** Thin wrapper around the native WebSocket so `DebateThread` stays focused

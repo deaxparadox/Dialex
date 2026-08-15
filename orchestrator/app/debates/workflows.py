@@ -66,6 +66,7 @@ class DebateWorkflow:
             judge_model_config = judge.get("model_config") or {}
             opening_state = {
                 "debate_id": debate_id,
+                "agent_persona_id": judge["id"],
                 "system_prompt": judge["system_prompt"],
                 "model_name": judge_model_config.get("model", "gpt-4o-mini"),
                 "temperature": judge_model_config.get("temperature", 0.7),
@@ -107,6 +108,8 @@ class DebateWorkflow:
                 model_config = participant["persona_snapshot"].get("model_config") or {}
                 arg_state = {
                     "debate_id": debate_id,
+                    "agent_persona_id": participant["agent_persona_id"],
+                    "round_number": round_number,
                     "system_prompt": participant["persona_snapshot"]["system_prompt"],
                     "model_name": model_config.get("model", "gpt-4o-mini"),
                     "temperature": model_config.get("temperature", 0.7),
@@ -176,6 +179,7 @@ class DebateWorkflow:
         judge_model_config = judge.get("model_config") or {}
         closing_state = {
             "debate_id": debate_id,
+            "agent_persona_id": judge["id"],
             "system_prompt": judge["system_prompt"],
             "model_name": judge_model_config.get("model", "gpt-4o-mini"),
             "temperature": judge_model_config.get("temperature", 0.7),

@@ -65,6 +65,7 @@ class VerdictSerializer(serializers.ModelSerializer):
 class DebateSerializer(serializers.ModelSerializer):
     judge_persona = AgentPersonaMiniSerializer(read_only=True)
     verdict = VerdictSerializer(read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
 
     class Meta:
         model = Debate
@@ -73,6 +74,7 @@ class DebateSerializer(serializers.ModelSerializer):
             "case_id",
             "turn_strategy",
             "status",
+            "status_display",
             "current_round",
             "max_rounds",
             "opening_statement",

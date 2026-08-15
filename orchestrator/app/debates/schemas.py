@@ -5,8 +5,7 @@ shapes."""
 from pydantic import BaseModel, Field
 
 
-class ArgumentOutput(BaseModel):
-    content: str
+class ArgumentJudgment(BaseModel):
     position: str
     confidence: float = Field(ge=0.0, le=1.0)
     responds_to_argument_id: int | None = Field(
@@ -18,14 +17,9 @@ class ArgumentOutput(BaseModel):
     )
 
 
-class JudgeOpeningOutput(BaseModel):
-    opening_statement: str
-
-
-class JudgeClosingOutput(BaseModel):
+class ClosingJudgment(BaseModel):
     decision: str
     confidence: float = Field(ge=0.0, le=1.0)
-    reasoning: str
     closing_summary: str
     cited_argument_ids: list[int]
 

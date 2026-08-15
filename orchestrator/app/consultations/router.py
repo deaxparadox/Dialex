@@ -2,14 +2,18 @@
 ownership before touching Temporal — never fetch-then-check-after, the same
 IDOR shape already caught once in spec 0005."""
 
+import json
 import logging
+from collections.abc import AsyncIterable
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.sse import EventSourceResponse, ServerSentEvent
 from temporalio.client import WorkflowUpdateFailedError
 from temporalio.exceptions import ApplicationError
 from temporalio.service import RPCError, RPCStatusCode
 
 from ..core.observability import bind_consultation_context
+from ..core.redis_client import redis_client
 from ..core.security import AuthContext, get_auth_context
 from ..core.temporal_client import TASK_QUEUE
 from . import queries
@@ -47,6 +51,20 @@ async def _get_owned_session(session_id: int, auth: AuthContext) -> dict:
     if session is None or session["user_id"] != auth.user_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Consultation not found")
     return session
+
+
+async def _owned_session_dependency(session_id: int, auth: AuthContext = Depends(get_auth_context)) -> dict:
+    """A `Depends(...)`-wrapped form of `_get_owned_session`, needed only for
+    the SSE endpoint below. Found the hard way: raising `HTTPException`
+    *inside* an async-generator route (the required shape for
+    `response_class=EventSourceResponse`, per FastAPI's own docs) doesn't
+    convert to a normal 404 response — by the time the exception fires,
+    Starlette's streaming machinery has already committed to the response,
+    so it surfaces as an unhandled `ExceptionGroup` and the client gets a
+    bare 200 with an empty body instead. Run as a dependency instead: FastAPI
+    resolves dependencies *before* invoking the generator body, so the same
+    404 here happens during normal request handling, not inside the stream."""
+    return await _get_owned_session(session_id, auth)
 
 
 @router.post("/", response_model=StartConsultationResponse)
@@ -101,6 +119,42 @@ async def submit_message(
             ) from exc
         raise
     return SubmitMessageResponse(**result)
+
+
+@router.get("/{session_id}/stream", response_class=EventSourceResponse)
+async def stream_consultation_turn(
+    session_id: int,
+    auth: AuthContext = Depends(get_auth_context),
+    _owned: dict = Depends(_owned_session_dependency),
+) -> AsyncIterable[ServerSentEvent]:
+    """Live step indicator only (ADR 0008 decision 5) — POST /messages
+    remains the sole source of truth for the actual reply; this carries no
+    content, just which reflection step is currently running.
+
+    The endpoint itself must be the async generator (`yield` directly) —
+    FastAPI's own documented pattern for `response_class=EventSourceResponse`
+    (verified against the actual docs, not assumed). A function that
+    constructs and returns `EventSourceResponse(some_generator())` instead
+    breaks with `TypeError: 'coroutine' object is not iterable` (found the
+    hard way running this against the real stack). The ownership check runs
+    as a `Depends(...)` (see `_owned_session_dependency`), not a manual
+    `await` in the body, for the same reason — raising inside the generator
+    itself doesn't produce a clean 404."""
+    bind_consultation_context(
+        consultation_session_id=session_id, session_id=auth.session_id, user_id=auth.user_id
+    )
+
+    channel = f"consultation:{session_id}:stream"
+    pubsub = redis_client.pubsub()
+    await pubsub.subscribe(channel)
+    try:
+        async for message in pubsub.listen():
+            if message["type"] != "message":
+                continue
+            yield ServerSentEvent(data=json.loads(message["data"]), event="step")
+    finally:
+        await pubsub.unsubscribe(channel)
+        await pubsub.aclose()
 
 
 @router.post("/{session_id}/approve", response_model=ApproveResponse)

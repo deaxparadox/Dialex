@@ -22,6 +22,7 @@ const MOCK_DEBATE: ApiDebate = {
   case_id: 7,
   turn_strategy: 'sequential',
   status: 'JUDGED',
+  status_display: 'Judged',
   current_round: 2,
   max_rounds: 2,
   opening_statement: 'Opening.',
@@ -238,6 +239,72 @@ describe('DebateThread', () => {
     await fixture.whenStable();
 
     expect(component.generatingTurn()).toBeNull();
+
+    httpMock.verify();
+  });
+
+  it('accumulates turn_token into streamingText, clears it on turn_token_reset/turn_started, and leaves it until the next turn on completion (spec 0020/0021)', async () => {
+    const fakeStream = { connect: vi.fn(), disconnect: vi.fn() };
+    configureWithRoute({ id: '3' }, {}, [
+      { provide: DebateStream, useValue: fakeStream },
+      { provide: Auth, useValue: { getAccessToken: () => 'test-token' } },
+    ]);
+    const fixture = TestBed.createComponent(DebateThread);
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    await fixture.whenStable();
+    httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/`).flush(MOCK_ACTIVE_DEBATE);
+    httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/arguments/`).flush(MOCK_ARGUMENTS);
+    await Promise.resolve();
+    await Promise.resolve();
+    httpMock.expectOne(`${environment.djangoApiBase}/api/cases/7/`).flush(MOCK_CASE);
+    await fixture.whenStable();
+
+    const [, , onMessage] = fakeStream.connect.mock.calls[0];
+    const component = fixture.componentInstance;
+
+    onMessage({
+      type: 'turn_started',
+      agent_persona_id: 4,
+      agent_name: 'New Agent',
+      stage: 'argument',
+      round_number: 2,
+    });
+    expect(component.streamingText()).toBe('');
+
+    onMessage({ type: 'turn_token', agent_persona_id: 4, stage: 'argument', round_number: 2, token: 'DTI ' });
+    onMessage({ type: 'turn_token', agent_persona_id: 4, stage: 'argument', round_number: 2, token: 'looks fine.' });
+    expect(component.streamingText()).toBe('DTI looks fine.');
+    httpMock.expectNone(`${environment.djangoApiBase}/api/debates/3/`); // tokens never trigger a re-fetch
+
+    onMessage({ type: 'turn_token_reset', agent_persona_id: 4, stage: 'argument', round_number: 2 });
+    expect(component.streamingText()).toBe('');
+    httpMock.expectNone(`${environment.djangoApiBase}/api/debates/3/`); // reset doesn't re-fetch either
+
+    onMessage({ type: 'turn_token', agent_persona_id: 4, stage: 'argument', round_number: 2, token: 'Retried text.' });
+    expect(component.streamingText()).toBe('Retried text.');
+
+    onMessage({ type: 'argument_complete', argument_id: 99 });
+    httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/`).flush(MOCK_ACTIVE_DEBATE);
+    httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/arguments/`).flush(MOCK_ARGUMENTS);
+    await fixture.whenStable();
+
+    // Deliberately NOT cleared on completion (spec 0021 fix) — the refetch
+    // above is async, and clearing streamingText in lockstep with
+    // generatingTurn left a real gap where already-streamed text visibly
+    // reverted to a loading indicator before the swap. It's left as-is
+    // until the next turn_started naturally resets it.
+    expect(component.generatingTurn()).toBeNull();
+    expect(component.streamingText()).toBe('Retried text.');
+
+    onMessage({
+      type: 'turn_started',
+      agent_persona_id: 5,
+      agent_name: 'Another Agent',
+      stage: 'argument',
+      round_number: 3,
+    });
+    expect(component.streamingText()).toBe('');
 
     httpMock.verify();
   });

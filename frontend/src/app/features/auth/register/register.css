@@ -62,6 +62,7 @@ button {
   font-weight: 600;
   cursor: pointer;
   margin-top: 6px;
+  transition: opacity var(--transition-fast);
 }
 
 button:disabled {
@@ -73,6 +74,19 @@ button:disabled {
   color: var(--divergence);
   font-size: 13px;
   margin: 0;
+}
+
+.fade-in {
+  animation: fade-slide-in var(--transition-base);
+}
+.fade-out {
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity var(--transition-base), transform var(--transition-base);
+}
+@keyframes fade-slide-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .switch {

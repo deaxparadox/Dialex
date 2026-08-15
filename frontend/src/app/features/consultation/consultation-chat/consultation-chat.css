@@ -90,6 +90,7 @@ button {
   padding: 11px;
   font-weight: 600;
   cursor: pointer;
+  transition: opacity var(--transition-fast);
 }
 
 button:disabled {
@@ -101,6 +102,19 @@ button:disabled {
   color: var(--divergence);
   font-size: 13px;
   margin: 0;
+}
+
+.fade-in {
+  animation: fade-slide-in var(--transition-base);
+}
+.fade-out {
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity var(--transition-base), transform var(--transition-base);
+}
+@keyframes fade-slide-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .state-message {
@@ -154,44 +168,86 @@ button:disabled {
 
 .message-content--pending {
   background: var(--page);
-  /* Hugs the 3 dots instead of stretching to the message column's full
-     width like a real text bubble would (spec 0012). */
+  /* Hugs the spinner+label instead of stretching to the message column's
+     full width like a real text bubble would (spec 0012). Fallback only —
+     spec 0024 pins an explicit px width via `[style.width.px]` once mounted,
+     so this only matters for the very first frame before that measurement
+     lands. */
   width: fit-content;
 }
 
-.typing-indicator {
-  display: flex;
+/* Spec 0024 — replaces the old 3-dot typing indicator, which the user felt
+   was "overloading" once the step label started changing underneath it. */
+.thinking-row {
+  overflow: hidden; /* clips during the width transition and the flip's perspective */
+  transition: width 0.25s ease;
+}
+
+.thinking-inner {
+  /* No padding here, deliberately — `.message-content--pending` (the
+     bubble itself) already provides it via `.message-content`'s own
+     `padding: 8px 12px`. Having both layers pad independently caused a real
+     bug: `pendingWidth` measured this element's already-padded width and
+     applied it as the bubble's *total* border-box width, so the bubble then
+     had to squeeze its own 24px of padding out of that same number — eating
+     the right-hand space (clipped by `overflow: hidden`) while the left
+     padding, which always reserves its own space, stayed visible. */
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 12px;
+  gap: 6px;
 }
 
-.typing-indicator span {
-  width: 6px;
-  height: 6px;
+.spinner {
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: var(--ink-muted);
-  animation: typing-bounce 1.1s infinite ease-in-out;
+  border: 2px solid var(--ink-muted);
+  border-top-color: transparent;
+  flex-shrink: 0;
+  animation: spin 0.9s linear infinite;
 }
 
-.typing-indicator span:nth-child(2) {
-  animation-delay: 0.15s;
-}
-
-.typing-indicator span:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-@keyframes typing-bounce {
-  0%,
-  60%,
-  100% {
-    transform: translateY(0);
-    opacity: 0.5;
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
-  30% {
-    transform: translateY(-4px);
+}
+
+.step-label {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--ink-muted);
+  display: inline-block;
+  white-space: nowrap; /* without this, text wraps to fit the *current* (stale)
+    container width instead of reporting its true single-line width — the
+    measurement effect then never sees the real size to grow the bubble
+    toward, so it stays stuck wrapped (found the hard way, real bug) */
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+  animation: flip-in 0.3s ease;
+}
+
+@keyframes flip-in {
+  from {
+    transform: rotateX(90deg);
+    opacity: 0;
+  }
+  to {
+    transform: rotateX(0deg);
     opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-row {
+    transition: none;
+  }
+  .spinner {
+    animation: none;
+    border-top-color: var(--ink-muted);
+  }
+  .step-label {
+    animation: none;
   }
 }
 

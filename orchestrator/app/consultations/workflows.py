@@ -82,10 +82,15 @@ class ConsultationWorkflow:
             "temperature": model_config.get("temperature", 0.7),
             "case_type": context["session"]["case_type"],
             "turns": turns,
+            "draft": {},
+            "critique": None,
             "result": {},
         }
         turn_result = await graph(CONSULTANT_GRAPH).compile().ainvoke(state)
-        result = turn_result["result"]
+        # The graph ends at `critique` (no `result` key ever set) whenever no
+        # revision was needed (ADR 0008) — the draft is the final answer in
+        # that case, not a fallback for a missing/failed step.
+        result = turn_result["result"] or turn_result["draft"]
 
         self._turn_count += 1
         await workflow.execute_activity(

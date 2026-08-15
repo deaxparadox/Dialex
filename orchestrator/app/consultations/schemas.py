@@ -23,6 +23,14 @@ class ConsultantTurnOutput(BaseModel):
     )
 
 
+class ConsultantCritique(BaseModel):
+    needs_revision: bool
+    concern: str | None = Field(
+        default=None,
+        description="Only when needs_revision is true: what the draft got wrong or missed.",
+    )
+
+
 class StartConsultationRequest(BaseModel):
     case_type: str
 

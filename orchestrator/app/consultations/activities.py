@@ -3,15 +3,28 @@ spec 0009) — same shape as `debates/activities.py`. Every activity binds
 `consultation_session_id` for log/span correlation itself, since an
 Activity shares no memory with the Workflow that scheduled it."""
 
+import json
 import logging
 
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
 from ..core.observability import bind_consultation_context
+from ..core.redis_client import redis_client
 from . import queries
 
 logger = logging.getLogger(__name__)
+
+
+async def _publish(session_id: int, event: dict) -> None:
+    """Step-indicator signal only (ADR 0008 decision 5) — never a source of
+    truth. Best-effort and non-fatal, same reasoning as debates/activities.py's
+    _publish: a Redis hiccup should cost the UI one missed "thinking" label
+    update, never fail the actual consultant turn over a live-view concern."""
+    try:
+        await redis_client.publish(f"consultation:{session_id}:stream", json.dumps(event))
+    except Exception:
+        logger.warning("failed to publish step event for consultation %d", session_id, exc_info=True)
 
 
 @activity.defn

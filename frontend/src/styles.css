@@ -32,6 +32,11 @@
      value so the whole app reads as one consistent visual language, not
      independently-guessed shadows per screen (spec 0012). */
   --panel-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.28), 0 2px 8px -2px rgba(0, 0, 0, 0.16);
+
+  /* Shared motion tokens (ADR 0009/spec 0026) — same "one value app-wide"
+     reasoning as --panel-shadow, not a per-component guessed duration. */
+  --transition-fast: 150ms ease;
+  --transition-base: 220ms ease;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -112,7 +117,22 @@ app-root {
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
   }
+  /* Pseudo-elements, not reached by the universal selector above (ADR 0009). */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.001ms !important;
+  }
+}
+
+/* Route cross-fade (spec 0026) — the browser's default View Transition
+   animation already cross-fades; only the duration is overridden here, to
+   match this app's shared motion token instead of the browser default. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--transition-base);
 }
 
 :focus-visible {

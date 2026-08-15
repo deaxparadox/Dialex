@@ -11,6 +11,7 @@ import {
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { Auth } from '../../../core/auth/auth';
+import { HumanizeSlugPipe } from '../../../shared/pipes/humanize-slug-pipe';
 import { ApiArgument, ApiCase, ApiDebate, DebatesApi } from '../data/debates-api';
 import { DebateStream } from '../data/debate-stream';
 
@@ -78,7 +79,7 @@ function fillRespondsToLabels(args: DebateArgument[]): DebateArgument[] {
 
 @Component({
   selector: 'app-debate-thread',
-  imports: [],
+  imports: [HumanizeSlugPipe],
   templateUrl: './debate-thread.html',
   styleUrl: './debate-thread.css',
 })
@@ -122,6 +123,15 @@ export class DebateThread {
   /** Live "who's generating right now" signal (spec 0018/0019) — cleared the
    * moment the corresponding complete event arrives and fresh data is fetched. */
   readonly generatingTurn = signal<GeneratingTurn | null>(null);
+
+  /** Accumulated live text for whatever turn is currently generating (spec
+   * 0020) — a single signal, not a per-turn map, since `DebateWorkflow` is
+   * fully sequential (verified by reading `workflows.py`): only one
+   * participant/judge call is ever streaming at a time, globally, per
+   * debate. Cleared on `turn_started` (fresh turn), `turn_token_reset` (the
+   * same turn restarting after a Temporal-level retry), and once the turn's
+   * complete event lands and real data is fetched. */
+  readonly streamingText = signal<string>('');
 
   /** `generatingTurn`, but only when it's actually the opening-statement
    * turn — null (not just "some other stage") once round 1's turn_started
@@ -181,6 +191,7 @@ export class DebateThread {
     afterRenderEffect(() => {
       this.arguments();
       this.generatingTurn();
+      this.streamingText();
       const el = this.threadContainer()?.nativeElement;
       if (el) el.scrollTop = el.scrollHeight;
     });
@@ -258,14 +269,32 @@ export class DebateThread {
       token,
       (event) => {
         if (event.type === 'turn_started') {
+          this.streamingText.set('');
           this.generatingTurn.set({
             agentPersonaId: event.agent_persona_id,
             agentName: event.agent_name,
             stage: event.stage,
             roundNumber: event.round_number,
           });
+        } else if (event.type === 'turn_token') {
+          this.streamingText.update((text) => text + event.token);
+        } else if (event.type === 'turn_token_reset') {
+          this.streamingText.set('');
         } else {
-          this.generatingTurn.set(null); // that turn is done — fresh data is coming
+          // `generatingTurn` clears immediately, but `streamingText` is left
+          // as-is deliberately (not reset here) — `loadDebate()`'s refetch is
+          // async, and clearing both synchronously left a real gap where
+          // `generatingTurn` was already null but the real complete data
+          // hadn't arrived yet: the opening-statement fallback (built for a
+          // different case, reconnecting mid-generation) doesn't know about
+          // `streamingText` and unconditionally showed dots, so already-
+          // streamed text visibly reverted to a loading indicator for
+          // ~100-150ms right before the swap (found during spec 0021
+          // verification). Leaving `streamingText` populated until the next
+          // `turn_started` naturally clears it means that fallback (and the
+          // verdict-thinking block) keep showing the same, now-complete text
+          // instead of reverting — a seamless swap once the real data lands.
+          this.generatingTurn.set(null);
           void this.loadDebate(debateId);
         }
       },

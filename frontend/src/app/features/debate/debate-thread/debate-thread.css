@@ -45,6 +45,7 @@
   padding: 5px 11px;
   cursor: pointer;
   font-family: var(--font-body);
+  transition: color var(--transition-fast), background var(--transition-fast);
 }
 .toggle button:first-child,
 .mode-toggle button:first-child {
@@ -316,6 +317,7 @@
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
+  transition: opacity var(--transition-fast);
 }
 .start-button:disabled {
   opacity: 0.5;

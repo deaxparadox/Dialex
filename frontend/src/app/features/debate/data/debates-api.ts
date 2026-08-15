@@ -40,6 +40,7 @@ export interface ApiDebate {
   case_id: number;
   turn_strategy: string;
   status: string;
+  status_display: string;
   current_round: number;
   max_rounds: number;
   opening_statement: string | null;

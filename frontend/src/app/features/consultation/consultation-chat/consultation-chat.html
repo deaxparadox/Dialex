@@ -13,15 +13,22 @@
         @if (sending()) {
           <div class="message">
             <span class="message-speaker">Consultant</span>
-            <p class="message-content message-content--pending typing-indicator">
-              <span></span><span></span><span></span>
+            <p class="message-content message-content--pending thinking-row" #pendingBubble [style.width.px]="pendingWidth()">
+              <span class="thinking-inner" #thinkingInner>
+                <span class="spinner" aria-hidden="true"></span>
+                @switch (currentStep()) {
+                  @case ('critique') { <span class="step-label">Double-checking…</span> }
+                  @case ('revise') { <span class="step-label">Revising…</span> }
+                  @default { <span class="step-label">Thinking…</span> }
+                }
+              </span>
             </p>
           </div>
         }
       </div>
 
       @if (error()) {
-        <p class="error">{{ error() }}</p>
+        <p class="error" animate.enter="fade-in" animate.leave="fade-out">{{ error() }}</p>
       }
 
       <div class="composer">
@@ -52,7 +59,7 @@
       <h1>Start a new case</h1>
 
       @if (loadingCaseTypes()) {
-        <p class="state-message">Loading case types&hellip;</p>
+        <p class="state-message" animate.enter="fade-in" animate.leave="fade-out">Loading case types&hellip;</p>
       } @else {
         <label>
           <span>Case type</span>
@@ -61,13 +68,13 @@
             (change)="onSelectCaseType($any($event.target).value)"
           >
             @for (type of caseTypes(); track type) {
-              <option [value]="type">{{ type }}</option>
+              <option [value]="type">{{ type | humanizeSlug }}</option>
             }
           </select>
         </label>
 
         @if (error()) {
-          <p class="error">{{ error() }}</p>
+          <p class="error" animate.enter="fade-in" animate.leave="fade-out">{{ error() }}</p>
         }
 
         <button type="button" (click)="startConsultation()" [disabled]="!selectedCaseType()">

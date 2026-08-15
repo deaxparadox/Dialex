@@ -13,7 +13,7 @@
     </label>
 
     @if (error()) {
-      <p class="error">{{ error() }}</p>
+      <p class="error" animate.enter="fade-in" animate.leave="fade-out">{{ error() }}</p>
     }
 
     <button type="submit" [disabled]="form.invalid || submitting()">

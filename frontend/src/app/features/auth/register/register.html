@@ -23,11 +23,11 @@
     </label>
 
     @if (form.errors?.['passwordMismatch'] && form.get('confirmPassword')?.touched) {
-      <p class="error">Passwords don't match.</p>
+      <p class="error" animate.enter="fade-in" animate.leave="fade-out">Passwords don't match.</p>
     }
 
     @if (error()) {
-      <p class="error">{{ error() }}</p>
+      <p class="error" animate.enter="fade-in" animate.leave="fade-out">{{ error() }}</p>
     }
 
     <button type="submit" [disabled]="form.invalid || submitting()">

@@ -17,7 +17,8 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 
 from ..core.observability import bind_debate_context
-from .schemas import ArgumentOutput, JudgeClosingOutput, JudgeOpeningOutput
+from .activities import _publish
+from .schemas import ArgumentJudgment, ClosingJudgment
 
 ARGUMENT_GRAPH = "argument-graph"
 JUDGE_OPENING_GRAPH = "judge-opening-graph"
@@ -35,6 +36,8 @@ def _llm(model_name: str, temperature: float) -> ChatOpenAI:
 
 class ArgumentState(TypedDict):
     debate_id: int
+    agent_persona_id: int
+    round_number: int
     system_prompt: str
     model_name: str
     temperature: float
@@ -46,7 +49,21 @@ class ArgumentState(TypedDict):
 
 
 async def _produce_argument(state: ArgumentState) -> dict:
+    """Split per ADR 0007 decision 1: a plain-streamed call for `content`
+    (published token-by-token, spec 0020) followed by a fast structured
+    call for the judgment fields only (`position`/`confidence`/
+    `responds_to_argument_id`) — those can only be judged from the
+    complete text (ADR 0006), but the text itself never needed to be
+    atomic. The judgment call is explicitly told not to rewrite the
+    content, and its schema has no field for it, so what's persisted can
+    never drift from what streamed."""
     bind_debate_context(debate_id=state["debate_id"])
+    turn_meta = {
+        "agent_persona_id": state["agent_persona_id"],
+        "stage": "argument",
+        "round_number": state["round_number"],
+    }
+    await _publish(state["debate_id"], {"type": "turn_token_reset", **turn_meta})
 
     options_note = (
         f"Your `position` must be exactly one of: {state['position_options']}."
@@ -65,14 +82,35 @@ async def _produce_argument(state: ArgumentState) -> dict:
         f"Case: {json.dumps(state['case_payload'])}\n\n"
         f"Prior arguments so far: {json.dumps(state['prior_arguments'])}\n\n"
         f"{options_note}\n{change_note}\n\n"
-        "Produce your argument for this round."
+        "Produce your argument for this round as plain prose (2-4 sentences), in your own "
+        "words. Do not output JSON and do not repeat the prior-arguments data verbatim — the "
+        "structured-output call that used to constrain this response is gone (this call is "
+        "plain text now, spec 0020), so write natural language explicitly, even if your "
+        "position hasn't changed since last round."
     )
 
-    llm = _llm(state["model_name"], state["temperature"]).with_structured_output(ArgumentOutput)
-    response: ArgumentOutput = await llm.ainvoke(
-        [SystemMessage(state["system_prompt"]), HumanMessage(prompt)]
+    llm = _llm(state["model_name"], state["temperature"])
+    parts: list[str] = []
+    async for chunk in llm.astream([SystemMessage(state["system_prompt"]), HumanMessage(prompt)]):
+        if not chunk.content:
+            continue
+        parts.append(chunk.content)
+        await _publish(state["debate_id"], {"type": "turn_token", "token": chunk.content, **turn_meta})
+    content = "".join(parts)
+
+    judgment_prompt = (
+        f"Case: {json.dumps(state['case_payload'])}\n\n"
+        f"Prior arguments so far: {json.dumps(state['prior_arguments'])}\n\n"
+        f"{options_note}\n{change_note}\n\n"
+        f"Your argument this round, already written:\n{content}\n\n"
+        "Based on the argument above, give your position, confidence, and (if applicable) "
+        "which prior argument changed your mind. Do not rewrite the argument."
     )
-    return {"result": response.model_dump()}
+    judgment_llm = _llm(state["model_name"], state["temperature"]).with_structured_output(ArgumentJudgment)
+    judgment: ArgumentJudgment = await judgment_llm.ainvoke(
+        [SystemMessage(state["system_prompt"]), HumanMessage(judgment_prompt)]
+    )
+    return {"result": {"content": content, **judgment.model_dump()}}
 
 
 def build_argument_graph() -> StateGraph:
@@ -89,6 +127,7 @@ def build_argument_graph() -> StateGraph:
 
 class JudgeOpeningState(TypedDict):
     debate_id: int
+    agent_persona_id: int
     system_prompt: str
     model_name: str
     temperature: float
@@ -97,17 +136,30 @@ class JudgeOpeningState(TypedDict):
 
 
 async def _produce_opening(state: JudgeOpeningState) -> dict:
+    """No split needed (ADR 0007 decision 1) — `JudgeOpeningOutput` was
+    100% prose (`opening_statement` only, no judgment field), so this graph
+    never needed structured output in the first place. Streams directly."""
     bind_debate_context(debate_id=state["debate_id"])
+    turn_meta = {
+        "agent_persona_id": state["agent_persona_id"],
+        "stage": "opening_statement",
+        "round_number": None,
+    }
+    await _publish(state["debate_id"], {"type": "turn_token_reset", **turn_meta})
+
     prompt = (
         f"Case: {json.dumps(state['case_payload'])}\n\n"
         "Give your opening statement as judge/moderator for this debate: frame what a "
         "resolved outcome would look like, without pre-judging any participant's position."
     )
-    llm = _llm(state["model_name"], state["temperature"]).with_structured_output(JudgeOpeningOutput)
-    response: JudgeOpeningOutput = await llm.ainvoke(
-        [SystemMessage(state["system_prompt"]), HumanMessage(prompt)]
-    )
-    return {"result": response.model_dump()}
+    llm = _llm(state["model_name"], state["temperature"])
+    parts: list[str] = []
+    async for chunk in llm.astream([SystemMessage(state["system_prompt"]), HumanMessage(prompt)]):
+        if not chunk.content:
+            continue
+        parts.append(chunk.content)
+        await _publish(state["debate_id"], {"type": "turn_token", "token": chunk.content, **turn_meta})
+    return {"result": {"opening_statement": "".join(parts)}}
 
 
 def build_judge_opening_graph() -> StateGraph:
@@ -124,6 +176,7 @@ def build_judge_opening_graph() -> StateGraph:
 
 class JudgeClosingState(TypedDict):
     debate_id: int
+    agent_persona_id: int
     system_prompt: str
     model_name: str
     temperature: float
@@ -134,7 +187,21 @@ class JudgeClosingState(TypedDict):
 
 
 async def _produce_closing(state: JudgeClosingState) -> dict:
+    """Split per ADR 0007 decision 1: only `reasoning` is actually rendered
+    live to a user (debate-thread.html's verdict card) — `closing_summary`
+    is persisted but never displayed today, so it rides in the judgment
+    call along with `decision`/`confidence`/`cited_argument_ids` rather than
+    needing to stream. Applying spec 0020's lesson up front this time: the
+    prompt explicitly forbids JSON/verbatim-echoing from the first draft,
+    not after finding the same degeneration bug again."""
     bind_debate_context(debate_id=state["debate_id"])
+    turn_meta = {
+        "agent_persona_id": state["agent_persona_id"],
+        "stage": "verdict",
+        "round_number": None,
+    }
+    await _publish(state["debate_id"], {"type": "turn_token_reset", **turn_meta})
+
     options_note = (
         f"Your `decision` must be exactly one of: {state['decision_options']}."
         if state["decision_options"]
@@ -144,14 +211,33 @@ async def _produce_closing(state: JudgeClosingState) -> dict:
         f"Case: {json.dumps(state['case_payload'])}\n\n"
         f"Full argument history: {json.dumps(state['all_arguments'])}\n\n"
         f"{options_note}\n\n"
-        "Produce your final verdict. `cited_arguments` must reference specific argument ids "
-        "from the history above (decision 8's forced-citation rule) — never bare narration."
+        "Write your reasoning for the final verdict as plain prose (3-5 sentences), in your own "
+        "words. Do not output JSON, and do not repeat the argument history verbatim."
     )
-    llm = _llm(state["model_name"], state["temperature"]).with_structured_output(JudgeClosingOutput)
-    response: JudgeClosingOutput = await llm.ainvoke(
-        [SystemMessage(state["system_prompt"]), HumanMessage(prompt)]
+    llm = _llm(state["model_name"], state["temperature"])
+    parts: list[str] = []
+    async for chunk in llm.astream([SystemMessage(state["system_prompt"]), HumanMessage(prompt)]):
+        if not chunk.content:
+            continue
+        parts.append(chunk.content)
+        await _publish(state["debate_id"], {"type": "turn_token", "token": chunk.content, **turn_meta})
+    reasoning = "".join(parts)
+
+    judgment_prompt = (
+        f"Case: {json.dumps(state['case_payload'])}\n\n"
+        f"Full argument history: {json.dumps(state['all_arguments'])}\n\n"
+        f"{options_note}\n\n"
+        f"Your reasoning, already written:\n{reasoning}\n\n"
+        "Based on the reasoning above, give your final decision, confidence, a short closing "
+        "summary, and which argument ids you cited. `cited_argument_ids` must reference real "
+        "ids from the history above (decision 8's forced-citation rule) — never bare narration. "
+        "Do not rewrite the reasoning."
     )
-    return {"result": response.model_dump()}
+    judgment_llm = _llm(state["model_name"], state["temperature"]).with_structured_output(ClosingJudgment)
+    judgment: ClosingJudgment = await judgment_llm.ainvoke(
+        [SystemMessage(state["system_prompt"]), HumanMessage(judgment_prompt)]
+    )
+    return {"result": {"reasoning": reasoning, **judgment.model_dump()}}
 
 
 def build_judge_closing_graph() -> StateGraph:
