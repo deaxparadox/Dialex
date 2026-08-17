@@ -101,7 +101,6 @@ export class DebateThread {
   readonly mode = signal<'minimal' | 'detail'>(this.readModeParam());
 
   readonly loading = signal(true);
-  readonly noDebateSelected = signal(false);
   readonly notFound = signal(false);
 
   readonly debate = signal<ApiDebate | null>(null);
@@ -120,8 +119,11 @@ export class DebateThread {
     return [...rounds].sort((a, b) => a - b);
   });
 
-  /** Live "who's generating right now" signal (spec 0018/0019) — cleared the
-   * moment the corresponding complete event arrives and fresh data is fetched. */
+  /** Live "who's generating right now" signal (spec 0018/0019) — cleared
+   * only once the corresponding complete event's data refetch has actually
+   * landed (spec 0029), not synchronously on the event itself, so the
+   * "thinking" UI never disappears before the "final" UI is ready to
+   * replace it. */
   readonly generatingTurn = signal<GeneratingTurn | null>(null);
 
   /** Accumulated live text for whatever turn is currently generating (spec
@@ -172,12 +174,9 @@ export class DebateThread {
   private streaming = false;
 
   constructor() {
-    const idParam = this.route.snapshot.paramMap.get('id');
-    if (!idParam) {
-      this.noDebateSelected.set(true);
-      this.loading.set(false);
-      return;
-    }
+    // Guaranteed non-null: app.routes.ts only ever routes here via
+    // 'debates/:id' since spec 0027 added a separate 'debates' list route.
+    const idParam = this.route.snapshot.paramMap.get('id')!;
     void this.loadDebate(Number(idParam));
     this.destroyRef.onDestroy(() => {
       this.closeStream();
@@ -281,21 +280,32 @@ export class DebateThread {
         } else if (event.type === 'turn_token_reset') {
           this.streamingText.set('');
         } else {
-          // `generatingTurn` clears immediately, but `streamingText` is left
-          // as-is deliberately (not reset here) — `loadDebate()`'s refetch is
-          // async, and clearing both synchronously left a real gap where
-          // `generatingTurn` was already null but the real complete data
-          // hadn't arrived yet: the opening-statement fallback (built for a
-          // different case, reconnecting mid-generation) doesn't know about
-          // `streamingText` and unconditionally showed dots, so already-
-          // streamed text visibly reverted to a loading indicator for
-          // ~100-150ms right before the swap (found during spec 0021
-          // verification). Leaving `streamingText` populated until the next
-          // `turn_started` naturally clears it means that fallback (and the
-          // verdict-thinking block) keep showing the same, now-complete text
-          // instead of reverting — a seamless swap once the real data lands.
-          this.generatingTurn.set(null);
-          void this.loadDebate(debateId);
+          // `streamingText` is left as-is deliberately (not reset here) —
+          // already-streamed text should keep showing, not revert to a
+          // loading indicator, until the next `turn_started` naturally
+          // clears it (found during spec 0021 verification).
+          //
+          // `generatingTurn` itself is NOT cleared synchronously here
+          // (spec 0029) — `loadDebate()`'s refetch is async, and clearing
+          // immediately left a real gap where the "thinking" UI had already
+          // disappeared but the "final" UI wasn't ready yet: an argument's
+          // thinking bubble vanishing before the real bubble lands (thread
+          // height dips then overshoots, visible as a scroll flicker since
+          // the auto-scroll effect unconditionally re-pins to bottom on
+          // every change), and the opening-statement/verdict blink bugs
+          // (both fixed structurally below, for a different, narrower
+          // reconnect scenario — this gap was their common-case trigger).
+          // Only clear once the refetch lands, and only if nothing newer
+          // already replaced it — the backend graph is fully sequential, so
+          // the *next* turn's `turn_started` can arrive while this refetch
+          // is still in flight; naively nulling here would clobber that
+          // newer, already-correct state.
+          const completingTurn = this.generatingTurn();
+          void this.loadDebate(debateId).then(() => {
+            if (this.generatingTurn() === completingTurn) {
+              this.generatingTurn.set(null);
+            }
+          });
         }
       },
       () => {

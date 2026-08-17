@@ -22,7 +22,7 @@ All endpoints below require a valid access token unless noted. List endpoints ar
 ### Cases
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/cases/` | **Built and verified (spec 0008).** List the user's cases — ownership-scoped via `get_queryset` (never fetch-then-check), matching the IDOR-avoidance pattern already learned in spec 0005. |
+| `GET` | `/api/cases/` | **Built and verified (spec 0008).** List the user's cases — ownership-scoped via `get_queryset` (never fetch-then-check), matching the IDOR-avoidance pattern already learned in spec 0005. Now also consumed by the frontend (spec 0027's "My debates" list, joined client-side against `/api/debates/` by `case_id` for a humanized case type per row). |
 | `GET` | `/api/cases/{id}/` | **Built and verified (spec 0008).** Case detail. (`ConsultationSession` linkage described below isn't populated yet — that stage doesn't exist.) |
 
 *(No direct `POST /api/cases/` — a `Case` is created server-side only, via `ConsultationSession` approval (spec 0009, built and verified) or Django-admin seeding. No frontend exists yet to drive the consultation flow, so a real user still can't create one through the running app.)*
@@ -30,7 +30,7 @@ All endpoints below require a valid access token unless noted. List endpoints ar
 ### Debates
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/debates/` | **Built and verified (spec 0008).** List debates, ownership-scoped via the owning `Case`; optional `?case=<id>` filter. |
+| `GET` | `/api/debates/` | **Built and verified (spec 0008).** List debates, ownership-scoped via the owning `Case`; optional `?case=<id>` filter. Now also consumed by the frontend (spec 0027's "My debates" list — first real client of this endpoint as a list, not just via the `?case=` filter). |
 | `GET` | `/api/debates/{id}/` | **Built and verified (spec 0008).** Status, `turn_strategy`, nested `Verdict` if present. (`HumanReview` isn't built yet — that flow doesn't exist.) Also returns `status_display` (spec 0025, added alongside the raw `status` field) — the human-readable label from `Debate.Status.choices` (e.g. "No consensus" for `NO_CONSENSUS`), for display only; clients must keep branching on the raw `status` value. |
 | `GET` | `/api/debates/{id}/arguments/` | **Built and verified (spec 0008).** Full argument DAG, each row including a server-computed `leaning` (0=divergent, 1=convergent) for the debate-thread visualization — derived from `CaseTypeConfig.position_options`' list order (now documented as spectrum order, decision/spec 0008), falling back to distinct-value clustering when a position isn't in that list. This is also the catch-up mechanism the original plan described for a client reconnecting mid-debate, ahead of the live stream below (now built, ADR 0006/specs 0013-0014). |
 | `GET` | `/api/debates/{id}/research-findings/` | Not built yet — no research round exists (decision 5b/11 deferred). |

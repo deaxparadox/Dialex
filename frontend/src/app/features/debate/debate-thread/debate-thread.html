@@ -1,10 +1,5 @@
 @if (loading()) {
   <div class="state-message">Loading debate&hellip;</div>
-} @else if (noDebateSelected()) {
-  <div class="state-message">
-    No debate selected &mdash; open one via a direct link for now
-    <span class="state-sub">(a "browse my debates" list is a separate, not-yet-built screen)</span>
-  </div>
 } @else if (notFound()) {
   <div class="state-message">Debate not found.</div>
 } @else if (debate(); as d) {
@@ -65,28 +60,35 @@
           }
         </div>
       } @else if (isActive() && d.status !== 'OPEN') {
-        <!-- Covers two cases: reconnecting mid-generation (a turn_started
+        <!-- Covers reconnecting mid-generation specifically: a turn_started
              event already fired before this page/socket existed and Redis
-             pub/sub has no replay, ADR 0006 decision 4) and the brief window
-             after generatingTurn has moved on to round 1 but the opening
-             statement's own refetch hasn't landed yet — either way, the
-             opening statement genuinely isn't ready, so keep showing this
-             instead of leaving the slot blank (found as a real bug, spec
-             0019 verification). Deliberately not gated on arguments().length
-             — round 1 bubbles may already be rendering below while this
-             still shows, which is accurate: the opening statement really
-             isn't loaded into view yet. Shows leftover `streamingText()` if
-             present instead of unconditional dots — otherwise, in the gap
-             between generatingTurn clearing and the refetch landing, already-
-             streamed text would visibly revert to a loading indicator right
-             before the swap (found as a real bug, spec 0021 verification). -->
-        <div class="thinking-row">
-          @if (streamingText()) {
-            <p class="opening-text">{{ streamingText() }}</p>
-          } @else {
-            <span class="thinking-label">Generating opening statement&hellip;</span>
-            <span class="typing-indicator"><span></span><span></span><span></span></span>
-          }
+             pub/sub has no replay (ADR 0006 decision 4), so generatingTurn
+             is null here even though the opening statement is actively
+             generating server-side (found as a real bug, spec 0019
+             verification). The other case this used to also cover — the
+             brief window after generatingTurn cleared but the opening
+             statement's own refetch hadn't landed yet — no longer reaches
+             this branch at all (spec 0029: generatingTurn now stays set
+             until the refetch lands). Deliberately not gated on
+             arguments().length — round 1 bubbles may already be rendering
+             below while this still shows, which is accurate: the opening
+             statement really isn't loaded into view yet. Has its own
+             avatar+header (spec 0029), matching the final branch's text
+             exactly, since this branch used to have none — a real,
+             structural gap, not a paint race (found via real DOM polling). -->
+        <div class="opening-entry">
+          <div class="opening-head">
+            <span class="avatar avatar-judge avatar-inline">{{ initialFor(d.judge_persona.name) }}</span>
+            Opening Statement &middot; {{ d.judge_persona.name }}
+          </div>
+          <div class="thinking-row">
+            @if (streamingText()) {
+              <p class="opening-text">{{ streamingText() }}</p>
+            } @else {
+              <span class="thinking-label">Generating opening statement&hellip;</span>
+              <span class="typing-indicator"><span></span><span></span><span></span></span>
+            }
+          </div>
         </div>
       } @else if (arguments().length === 0) {
         <p class="reading-empty">No arguments yet.</p>
@@ -170,6 +172,44 @@
             }
           </div>
         }
+      } @else if (!d.verdict && d.status !== 'OPEN' && arguments().length >= d.max_rounds * 2) {
+        <!-- Reconnecting mid-verdict-generation: a turn_started event
+             already fired before this page/socket existed, so
+             generatingTurn is null here even though the verdict is actively
+             generating server-side (same reasoning as the opening
+             statement's equivalent branch above). Can't reuse that branch's
+             simpler d.status-only condition here — d.status/d.verdict alone
+             can't tell "reconnected mid-argument-round" apart from
+             "reconnected mid-verdict," both look identical from refetched
+             state during that gap. Every debate today has exactly 2
+             participants (established elsewhere in this file), so once
+             max_rounds * 2 real arguments exist, argument generation is
+             fully done and the verdict must be next — derived entirely from
+             refetchable data, so (unlike a client-only signal) it correctly
+             covers a genuine fresh page load, not just an already-open tab.
+             Deliberately never shows streamingText() here (found as a real
+             bug during spec 0029 verification): this branch only ever
+             renders while generatingTurn() is null, i.e. before the
+             verdict's own turn_started has been received — so streamingText
+             at that point can only be stale leftover from the last
+             argument's turn, never legitimate verdict content. Showing it
+             produced a one-frame stale-content flash right as the last
+             argument's data landed and this branch briefly took over before
+             the verdict's own events arrived. Always show the placeholder
+             instead; real verdict content takes over via the branch above
+             the instant its own turn_started/turn_token events arrive. -->
+        <div class="round-divider">
+          <span class="round-line"></span>
+          <span class="round-label">Verdict</span>
+          <span class="round-line"></span>
+        </div>
+        <div class="verdict-entry">
+          <div class="verdict-head">
+            <span class="avatar avatar-judge avatar-inline">{{ initialFor(d.judge_persona.name) }}</span>
+            Verdict &middot; {{ d.judge_persona.name }}
+          </div>
+          <span class="typing-indicator"><span></span><span></span><span></span></span>
+        </div>
       }
     </div>
   </div>

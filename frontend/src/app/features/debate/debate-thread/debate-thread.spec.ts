@@ -95,15 +95,6 @@ function configureWithRoute(
 }
 
 describe('DebateThread', () => {
-  it('shows the empty state when no :id route param is present', async () => {
-    configureWithRoute({});
-    const fixture = TestBed.createComponent(DebateThread);
-    await fixture.whenStable();
-
-    expect(fixture.componentInstance.noDebateSelected()).toBe(true);
-    expect(fixture.componentInstance.loading()).toBe(false);
-  });
-
   it('fetches and renders real data for a given :id, grouping by round and left/right by agent (spec 0016)', async () => {
     configureWithRoute({ id: '3' });
     const fixture = TestBed.createComponent(DebateThread);
@@ -236,6 +227,12 @@ describe('DebateThread', () => {
     onMessage({ type: 'argument_complete', argument_id: 99 });
     httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/`).flush(MOCK_ACTIVE_DEBATE);
     httpMock.expectOne(`${environment.djangoApiBase}/api/debates/3/arguments/`).flush(MOCK_ARGUMENTS);
+    // generatingTurn is only cleared once loadDebate()'s refetch actually
+    // resolves (spec 0029, not synchronously on the event) — give its
+    // .then() chain a couple of microtask turns to settle, same pattern
+    // already used above for the initial case fetch.
+    await Promise.resolve();
+    await Promise.resolve();
     await fixture.whenStable();
 
     expect(component.generatingTurn()).toBeNull();

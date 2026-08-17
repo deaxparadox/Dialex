@@ -51,8 +51,11 @@ async def _draft(state: ConsultantTurnState) -> dict:
     prompt = (
         f"Case type: {state['case_type']}\n\n"
         f"Conversation so far:\n{_transcript(state['turns'])}\n\n"
-        "Continue the conversation: either ask your next clarifying question, or, if you "
-        "now understand the case well enough, set ready_to_finalize=true and include a "
+        "If the user has explicitly asked you to finalize or proceed, treat that as sufficient "
+        "unless a specific, concrete gap remains that would make the case payload wrong or "
+        "unusable — don't ask another open-ended question just for extra thoroughness. "
+        "Otherwise, continue the conversation: either ask your next clarifying question, or, if "
+        "you now understand the case well enough, set ready_to_finalize=true and include a "
         "proposed_payload (a JSON object capturing the case for debate)."
     )
     llm = ChatOpenAI(model=state["model_name"], temperature=state["temperature"])
@@ -111,9 +114,12 @@ async def _revise(state: ConsultantTurnState) -> dict:
         f"Conversation so far:\n{_transcript(state['turns'])}\n\n"
         f"Your drafted reply: {state['draft']['message']}\n\n"
         f"A concern was raised: {state['critique']['concern']}\n\n"
-        "Rewrite your reply to actually address this concern. Continue the conversation "
-        "as before: either ask your next clarifying question, or, if you now understand "
-        "the case well enough, set ready_to_finalize=true and include a proposed_payload."
+        "Rewrite your reply to actually address this concern. If the user has explicitly asked "
+        "you to finalize or proceed, treat that as sufficient unless a specific, concrete gap "
+        "remains that would make the case payload wrong or unusable. Otherwise, continue the "
+        "conversation as before: either ask your next clarifying question, or, if you now "
+        "understand the case well enough, set ready_to_finalize=true and include a "
+        "proposed_payload."
     )
     llm = ChatOpenAI(model=state["model_name"], temperature=state["temperature"])
     response: ConsultantTurnOutput = await llm.with_structured_output(ConsultantTurnOutput).ainvoke(

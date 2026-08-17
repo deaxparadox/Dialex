@@ -75,6 +75,14 @@ export class DebatesApi {
     return firstValueFrom(this.http.get<ApiDebate>(`${environment.djangoApiBase}/api/debates/${id}/`));
   }
 
+  listDebates(): Promise<ApiDebate[]> {
+    return firstValueFrom(this.http.get<ApiDebate[]>(`${environment.djangoApiBase}/api/debates/`));
+  }
+
+  listCases(): Promise<ApiCase[]> {
+    return firstValueFrom(this.http.get<ApiCase[]>(`${environment.djangoApiBase}/api/cases/`));
+  }
+
   getArguments(id: number): Promise<ApiArgument[]> {
     return firstValueFrom(
       this.http.get<ApiArgument[]>(`${environment.djangoApiBase}/api/debates/${id}/arguments/`)

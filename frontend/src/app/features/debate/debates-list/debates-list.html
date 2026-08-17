@@ -1,0 +1,25 @@
+@if (loading()) {
+  <div class="state-message">Loading your debates&hellip;</div>
+} @else if (error()) {
+  <div class="state-message error" animate.enter="fade-in" animate.leave="fade-out">{{ error() }}</div>
+} @else if (rows().length === 0) {
+  <div class="state-message">
+    No debates yet.
+    <a routerLink="/consultation">Start your first case</a>
+  </div>
+} @else {
+  <div class="shell">
+    <h1>My debates</h1>
+    <ul class="debate-list">
+      @for (row of rows(); track row.id) {
+        <li>
+          <a class="debate-row" [routerLink]="['/debates', row.id]">
+            <span class="row-case-type">{{ row.caseType ? (row.caseType | humanizeSlug) : ('Case #' + row.id) }}</span>
+            <span class="row-status">{{ row.statusDisplay }}</span>
+            <span class="row-date">{{ dateFor(row.createdAt) }}</span>
+          </a>
+        </li>
+      }
+    </ul>
+  </div>
+}
