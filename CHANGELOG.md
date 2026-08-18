@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-08-18 (debate-side policy grounding + dedicated loan_approval personas)
+
+- Closes ADR 0010's part 2: `policy_context` (spec 0030's rename of the unused `research_guardrail_prompt`) now flows into every participant's argument prompt and the judge's verdict prompt — not just the consultant's intake. `research_debate`'s empty `policy_context` keeps its prompts byte-for-byte unaffected.
+- Two new dedicated `loan_approval` personas — a Credit Risk Officer and a Relationship Loan Advisor — replace the generic software-engineering-flavored "Pragmatist"/"Scale-minded" pair every case type had shared until now.
+- Fixed `research_debate`'s empty participant-config data gap (confirmed live during spec 0030's own verification) — reassigned Pragmatist/Scale-minded as its real config, no behavior change, since that's the same pair its historical debates already used.
+- Verified end to end with two real full debate runs: a deliberately weak loan case produced arguments and a verdict that explicitly cited the case's own figures against the exact policy thresholds written into `policy_context`, converging correctly on denial; a `research_debate` run confirmed genuinely unaffected, and its approval now succeeds where it previously failed. See [docs/adr/0010-case-type-domain-grounding.md](docs/adr/0010-case-type-domain-grounding.md) and [docs/specs/0031-debate-side-policy-grounding-and-loan-personas.md](docs/specs/0031-debate-side-policy-grounding-and-loan-personas.md).
+
+## 2026-08-18 (loan_approval intake schema + enforcement)
+
+- Closes the intake half of a real gap: no case type has ever had real domain grounding — `loan_approval` debates were running on the same generic software-engineering personas used everywhere else, with no defined intake fields at all. Reached via a full brainstorming design conversation, written up as ADR 0010 (two-part sequence).
+- `CaseTypeConfig` gains `required_fields` (a data-driven schema of what the consultant must collect), enforced by dynamically building a per-case-type Pydantic model at structured-output time — the model literally cannot finalize with a required field missing. `research_debate`'s empty `required_fields` keeps it exactly as free-form as before.
+- DTI (debt-to-income ratio) is computed as a deterministic backend field from `monthly_debt`/`monthly_income`, never asked of or produced by the LLM — considered and rejected giving the model a calculator tool (verified the combination doesn't fit this codebase's existing `with_structured_output()` pattern in one call) since the calculation itself has no judgment call.
+- Renamed the long-unused `research_guardrail_prompt` field to `policy_context` (its actual content and use — grounding the real debate arguments/verdict, not just intake — is a separate, still-open follow-up).
+- Verified end to end via direct API calls and a real browser: an explicit "finalize now" push against an incomplete loan case is correctly refused with the exact fields still needed named back; providing all fields finalizes correctly with a correctly-computed `dti_ratio`; `research_debate` confirmed genuinely unaffected. See [docs/adr/0010-case-type-domain-grounding.md](docs/adr/0010-case-type-domain-grounding.md) and [docs/specs/0030-case-type-required-fields-and-consultant-schema.md](docs/specs/0030-case-type-required-fields-and-consultant-schema.md).
+
 ## 2026-08-17 (fix debate-thread streaming-to-final swap gap)
 
 - Fixed a user-reported scroll flicker on the debate screen: right as an argument's streamed tokens finished and the follow-up position/confidence data landed, the thread would visibly dip then jump. Root-caused via systematic debugging + real DOM/scroll polling (not guessed): `generatingTurn` cleared synchronously on the WS completion event, but the real data refetch was async — the "thinking" bubble disappeared before the real bubble was ready, shrinking then overshooting thread height, and an auto-scroll effect that unconditionally re-pins to bottom made that visible as a flicker.

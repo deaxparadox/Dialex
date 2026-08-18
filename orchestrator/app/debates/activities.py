@@ -42,6 +42,7 @@ async def fetch_debate_context(debate_id: int) -> dict:
     case_type_config = await queries.get_case_type_config(case["type"]) or {
         "position_options": [],
         "decision_options": [],
+        "policy_context": "",
     }
     participants = await queries.get_participants(debate_id)
     judge = await queries.get_judge_persona(debate["judge_persona_id"])

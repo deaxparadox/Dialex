@@ -43,6 +43,7 @@ class ArgumentState(TypedDict):
     temperature: float
     case_payload: dict
     position_options: list[str]
+    policy_context: str
     prior_arguments: list[dict]
     own_last_position: str | None
     result: dict
@@ -78,9 +79,11 @@ async def _produce_argument(state: ArgumentState) -> dict:
         if state["own_last_position"] is not None
         else "This is your first argument in this debate — `responds_to_argument_id` may be null."
     )
+    policy_note = f"Guidance for this case type: {state['policy_context']}\n" if state["policy_context"] else ""
     prompt = (
         f"Case: {json.dumps(state['case_payload'])}\n\n"
         f"Prior arguments so far: {json.dumps(state['prior_arguments'])}\n\n"
+        f"{policy_note}"
         f"{options_note}\n{change_note}\n\n"
         "Produce your argument for this round as plain prose (2-4 sentences), in your own "
         "words. Do not output JSON and do not repeat the prior-arguments data verbatim — the "
@@ -101,6 +104,7 @@ async def _produce_argument(state: ArgumentState) -> dict:
     judgment_prompt = (
         f"Case: {json.dumps(state['case_payload'])}\n\n"
         f"Prior arguments so far: {json.dumps(state['prior_arguments'])}\n\n"
+        f"{policy_note}"
         f"{options_note}\n{change_note}\n\n"
         f"Your argument this round, already written:\n{content}\n\n"
         "Based on the argument above, give your position, confidence, and (if applicable) "
@@ -183,6 +187,7 @@ class JudgeClosingState(TypedDict):
     case_payload: dict
     all_arguments: list[dict]
     decision_options: list[str]
+    policy_context: str
     result: dict
 
 
@@ -207,9 +212,11 @@ async def _produce_closing(state: JudgeClosingState) -> dict:
         if state["decision_options"]
         else "This case has no fixed decision vocabulary — state your own recommendation in `decision`."
     )
+    policy_note = f"Guidance for this case type: {state['policy_context']}\n" if state["policy_context"] else ""
     prompt = (
         f"Case: {json.dumps(state['case_payload'])}\n\n"
         f"Full argument history: {json.dumps(state['all_arguments'])}\n\n"
+        f"{policy_note}"
         f"{options_note}\n\n"
         "Write your reasoning for the final verdict as plain prose (3-5 sentences), in your own "
         "words. Do not output JSON, and do not repeat the argument history verbatim."
@@ -226,6 +233,7 @@ async def _produce_closing(state: JudgeClosingState) -> dict:
     judgment_prompt = (
         f"Case: {json.dumps(state['case_payload'])}\n\n"
         f"Full argument history: {json.dumps(state['all_arguments'])}\n\n"
+        f"{policy_note}"
         f"{options_note}\n\n"
         f"Your reasoning, already written:\n{reasoning}\n\n"
         "Based on the reasoning above, give your final decision, confidence, a short closing "

@@ -5,9 +5,17 @@ shapes (spec 0009)."""
 from pydantic import BaseModel, Field
 
 
-class ConsultantTurnOutput(BaseModel):
+class ConsultantTurnOutputBase(BaseModel):
     message: str
     ready_to_finalize: bool = False
+
+
+class ConsultantTurnOutput(ConsultantTurnOutputBase):
+    """Used when the case type has no `required_fields` (e.g.
+    research_debate) — stays exactly as free-form as before ADR 0010.
+    graphs.py builds a stricter, dynamically-typed sibling schema instead
+    when a case type does define required_fields."""
+
     # A free-form dict field can't be expressed in OpenAI's strict
     # structured-output schema (verified empirically: it rejects any
     # object without every property enumerated and `additionalProperties:

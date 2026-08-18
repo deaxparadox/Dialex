@@ -32,7 +32,16 @@ async def fetch_consultation_context(session_id: int) -> dict:
     bind_consultation_context(consultation_session_id=session_id)
     session = await queries.get_session(session_id)
     consultant_persona = await queries.get_agent_persona(session["consultant_persona_id"])
-    return {"session": session, "consultant_persona": consultant_persona}
+    # Reuses the same query approval already calls (queries.py) rather than
+    # a near-duplicate — the extra participant-id lookup it does is unused
+    # here but harmless (ADR 0010).
+    case_type_config = await queries.get_case_type_defaults(session["case_type"])
+    required_fields = case_type_config["required_fields"] if case_type_config else []
+    return {
+        "session": session,
+        "consultant_persona": consultant_persona,
+        "required_fields": required_fields,
+    }
 
 
 @activity.defn

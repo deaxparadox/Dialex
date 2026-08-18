@@ -81,6 +81,7 @@ class ConsultationWorkflow:
             "model_name": model_config.get("model", "gpt-4o-mini"),
             "temperature": model_config.get("temperature", 0.7),
             "case_type": context["session"]["case_type"],
+            "required_fields": context["required_fields"],
             "turns": turns,
             "draft": {},
             "critique": None,

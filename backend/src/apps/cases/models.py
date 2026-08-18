@@ -21,9 +21,24 @@ class CaseTypeConfig(models.Model):
     decision_options = models.JSONField(
         default=list, blank=True, help_text='e.g. ["approve", "deny"], or [] for research_debate'
     )
-    research_guardrail_prompt = models.TextField(
+    required_fields = models.JSONField(
+        default=list,
         blank=True,
-        help_text="Appended to the research Activity's system prompt for this case type (decision 14).",
+        help_text=(
+            "List of {name, type, description} the consultant must collect before "
+            "finalizing (ADR 0010) — enforced via a dynamically-built structured-output "
+            "schema, not just prompt wording. Empty list (e.g. research_debate) keeps the "
+            "intake fully free-form, unchanged from before this field existed."
+        ),
+    )
+    policy_context = models.TextField(
+        blank=True,
+        help_text=(
+            "Domain grounding text fed into the consultant and, once a debate starts, "
+            "every participant's argument prompt and the judge's verdict prompt (ADR "
+            "0010) — e.g. lending norms for loan_approval. Renamed from the unused "
+            "research_guardrail_prompt, which was never wired to any code path."
+        ),
     )
     default_consultant_persona = models.ForeignKey(
         "debates.AgentPersona",

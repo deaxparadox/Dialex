@@ -115,6 +115,7 @@ class DebateWorkflow:
                     "temperature": model_config.get("temperature", 0.7),
                     "case_payload": case["payload"],
                     "position_options": case_type_config.get("position_options") or [],
+                    "policy_context": case_type_config.get("policy_context") or "",
                     "prior_arguments": prior_arguments,
                     "own_last_position": _own_last_position(
                         prior_arguments, participant["agent_persona_id"], round_number
@@ -186,6 +187,7 @@ class DebateWorkflow:
             "case_payload": case["payload"],
             "all_arguments": all_arguments,
             "decision_options": case_type_config.get("decision_options") or [],
+            "policy_context": case_type_config.get("policy_context") or "",
             "result": {},
         }
         await workflow.execute_activity(

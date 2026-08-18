@@ -9,11 +9,12 @@ from typing import TypedDict
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
+from pydantic import BaseModel, Field, create_model
 from temporalio.common import RetryPolicy
 
 from ..core.observability import bind_consultation_context
 from .activities import _publish
-from .schemas import ConsultantCritique, ConsultantTurnOutput
+from .schemas import ConsultantCritique, ConsultantTurnOutput, ConsultantTurnOutputBase
 
 CONSULTANT_GRAPH = "consultant-graph"
 
@@ -34,6 +35,7 @@ class ConsultantTurnState(TypedDict):
     model_name: str
     temperature: float
     case_type: str
+    required_fields: list[dict]
     turns: list[dict]
     draft: dict
     critique: dict | None
@@ -42,6 +44,50 @@ class ConsultantTurnState(TypedDict):
 
 def _transcript(turns: list[dict]) -> str:
     return "\n".join(f"{t['speaker']}: {t['content']}" for t in turns)
+
+
+_FIELD_TYPE_MAP = {"string": str, "number": float, "boolean": bool}
+
+
+def _build_turn_output_schema(required_fields: list[dict]) -> type[BaseModel]:
+    """ConsultantTurnOutput (today's free-form-JSON-string shape) unchanged
+    when required_fields is empty (e.g. research_debate) — only a case type
+    with a real schema (loan_approval) gets the strict, fully-enumerated
+    variant, since that's the only shape OpenAI's strict structured-output
+    mode can actually validate (ADR 0010 decision 2)."""
+    if not required_fields:
+        return ConsultantTurnOutput
+    case_data_fields = {
+        f["name"]: (_FIELD_TYPE_MAP[f["type"]], Field(description=f["description"]))
+        for f in required_fields
+    }
+    case_data = create_model("CaseData", **case_data_fields)
+    return create_model(
+        "ConsultantTurnOutputStrict",
+        proposed_payload=(case_data | None, None),
+        __base__=ConsultantTurnOutputBase,
+    )
+
+
+def _extract_proposed_payload(response: BaseModel, required_fields: list[dict]) -> dict | None:
+    """Normalizes both schema variants back to a plain dict — every other
+    consumer (the workflow, persistence, the frontend) stays unaware which
+    variant actually fired (ADR 0010)."""
+    if required_fields:
+        payload = response.proposed_payload
+        return payload.model_dump() if payload else None
+    return json.loads(response.proposed_payload_json) if response.proposed_payload_json else None
+
+
+def _compute_derived_fields(case_type: str, payload: dict) -> dict:
+    """Explicit, not a generic formula engine (ADR 0010 decision 3) — the
+    only derived field today is loan_approval's DTI. monthly_debt/
+    monthly_income are ordinary required fields the consultant collects;
+    dti_ratio is computed here and merged in, never asked of or produced by
+    the model, so it can't be arithmetically wrong."""
+    if case_type == "loan_approval" and payload.get("monthly_income"):
+        payload = {**payload, "dti_ratio": round(payload["monthly_debt"] / payload["monthly_income"], 4)}
+    return payload
 
 
 async def _draft(state: ConsultantTurnState) -> dict:
@@ -58,11 +104,14 @@ async def _draft(state: ConsultantTurnState) -> dict:
         "you now understand the case well enough, set ready_to_finalize=true and include a "
         "proposed_payload (a JSON object capturing the case for debate)."
     )
+    schema = _build_turn_output_schema(state["required_fields"])
     llm = ChatOpenAI(model=state["model_name"], temperature=state["temperature"])
-    response: ConsultantTurnOutput = await llm.with_structured_output(ConsultantTurnOutput).ainvoke(
+    response = await llm.with_structured_output(schema).ainvoke(
         [SystemMessage(state["system_prompt"]), HumanMessage(prompt)]
     )
-    proposed_payload = json.loads(response.proposed_payload_json) if response.proposed_payload_json else None
+    proposed_payload = _extract_proposed_payload(response, state["required_fields"])
+    if proposed_payload:
+        proposed_payload = _compute_derived_fields(state["case_type"], proposed_payload)
     return {
         "draft": {
             "message": response.message,
@@ -121,11 +170,14 @@ async def _revise(state: ConsultantTurnState) -> dict:
         "understand the case well enough, set ready_to_finalize=true and include a "
         "proposed_payload."
     )
+    schema = _build_turn_output_schema(state["required_fields"])
     llm = ChatOpenAI(model=state["model_name"], temperature=state["temperature"])
-    response: ConsultantTurnOutput = await llm.with_structured_output(ConsultantTurnOutput).ainvoke(
+    response = await llm.with_structured_output(schema).ainvoke(
         [SystemMessage(state["system_prompt"]), HumanMessage(prompt)]
     )
-    proposed_payload = json.loads(response.proposed_payload_json) if response.proposed_payload_json else None
+    proposed_payload = _extract_proposed_payload(response, state["required_fields"])
+    if proposed_payload:
+        proposed_payload = _compute_derived_fields(state["case_type"], proposed_payload)
     return {
         "result": {
             "message": response.message,
