@@ -1,28 +1,44 @@
-/* Global design tokens — see docs/adr/0001-frontend-architecture.md.
-   Every feature shares this token system; Angular's view encapsulation scopes
-   selectors, not custom-property names, so these cascade into every component
-   by design, not by accident. */
+/* Global design tokens — see docs/adr/0001-frontend-architecture.md and
+   docs/adr/0011-product-shell-and-multi-theme-system.md. Every feature
+   shares this token system; Angular's view encapsulation scopes
+   selectors, not custom-property names, so these cascade into every
+   component by design, not by accident.
 
-:root {
+   Two independent axes, both driven by attributes core/theme/theme.ts
+   sets on <html> (never left to a CSS-only default, since there is no
+   OS-level signal for "brand" the way there is for light/dark):
+   data-brand ("citrus" | "electric", default citrus) and data-theme
+   ("light" | "dark" | absent-follows-system, unchanged from ADR 0001). */
+
+:root, :root[data-brand="citrus"] {
   /* --page: the outer gutter/background the panels float on.
      --ground: the panel/card surface itself — deliberately distinct from --page
      (a la Spotify's near-black panels sitting on a true-black page), not the
      same tone, so panels read as actual separated containers. */
-  --page: #E7E9EF;
-  --ground: #F5F6F9;
-  --ink: #1B1E27;
-  --ink-muted: #5B6070;
-  --ink-faint: #9096A6;
-  --line: #DDE1EA;
-  --divergence: #D9713E;
-  --convergence: #1E9E82;
-  --judge: #6E63B6;
+  --page: #FFFDF8;
+  --ground: #FFF7EE;
+  --ink: #241A0D;
+  --ink-muted: #8A6A4B;
+  --ink-faint: #C4AF8E;
+  --line: #FFDCC0;
+  --divergence: #D9502E;
+  --convergence: #1FA97E;
+  --judge: #7B4FFF;
   /* Per-agent identity (spec 0019) — a separate "who" signal from
      divergence/convergence's "how they lean," distinct hues on purpose. */
-  --agent-a: #3D7EBF;
-  --agent-a-bg: #EAF2FA;
-  --agent-b: #B8477C;
-  --agent-b-bg: #FAEAF1;
+  --agent-a: #2E6FB0;
+  --agent-a-bg: #E7F0FA;
+  --agent-b: #C24B7C;
+  --agent-b-bg: #FBEAF1;
+  /* Case/debate status (ADR 0011 decision 2) — its own namespace,
+     deliberately never aliased to --divergence/--convergence above, which
+     mean "this one argument's leaning," a different scope entirely. */
+  --status-action: #FF6B35;
+  --status-action-bg: #FFE7DA;
+  --status-live: #1FA97E;
+  --status-live-bg: #DFF5EC;
+  --status-done: #8A6A4B;
+  --status-done-bg: #F0E9DD;
 
   --font-display: "Iowan Old Style", "Palatino Linotype", "Georgia", ui-serif, serif;
   --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -39,54 +55,171 @@
   --transition-base: 220ms ease;
 }
 
+:root[data-brand="electric"] {
+  --page: #FFFFFF;
+  --ground: #F7F9FF;
+  --ink: #0B1E3D;
+  --ink-muted: #5A6B8C;
+  --ink-faint: #9BAAC7;
+  --line: #DCE4F7;
+  --divergence: #E0405F;
+  --convergence: #00A876;
+  --judge: #5C6FE0;
+  --agent-a: #2F5CFF;
+  --agent-a-bg: #E9EEFF;
+  --agent-b: #FF3D9A;
+  --agent-b-bg: #FFE7F3;
+  --status-action: #FFC845;
+  --status-action-bg: #FFF3D6;
+  --status-live: #00E28A;
+  --status-live-bg: #DAFBEC;
+  --status-done: #5A6B8C;
+  --status-done-bg: #E4E7EF;
+}
+
 @media (prefers-color-scheme: dark) {
+  /* System prefers dark and no explicit data-theme override. Reuses the
+     bare :root selector at the same specificity as the light default
+     above — CSS resolves the tie by source order, so this later block
+     correctly wins whenever the media query matches. */
   :root {
-    --page: #07080D;
-    --ground: #12151D;
-    --ink: #E8EAF0;
-    --ink-muted: #9BA1B4;
-    --ink-faint: #5C6376;
-    --line: #262B36;
-    --divergence: #E8834F;
-    --convergence: #2FBF9F;
-    --judge: #9A8FE0;
+    --page: #1C140B;
+    --ground: #241A0F;
+    --ink: #F3EAD8;
+    --ink-muted: #B39A78;
+    --ink-faint: #6E5A3C;
+    --line: #3D3220;
+    --divergence: #E8734F;
+    --convergence: #3FCB9A;
+    --judge: #9B7BFF;
     --agent-a: #5FA3E0;
     --agent-a-bg: #16222E;
-    --agent-b: #E0709F;
+    --agent-b: #E07AA8;
     --agent-b-bg: #2A1620;
+    --status-action: #FF8A5C;
+    --status-action-bg: #3D2A18;
+    --status-live: #3FCB9A;
+    --status-live-bg: #123028;
+    --status-done: #B39A78;
+    --status-done-bg: #2E2716;
+  }
+
+  :root[data-brand="electric"] {
+    --page: #060B18;
+    --ground: #0F1830;
+    --ink: #EAF0FF;
+    --ink-muted: #7E8FB8;
+    --ink-faint: #47547A;
+    --line: #1A2740;
+    --divergence: #FF5C79;
+    --convergence: #00E28A;
+    --judge: #8B9BFF;
+    --agent-a: #5C86FF;
+    --agent-a-bg: #16223D;
+    --agent-b: #FF6BB5;
+    --agent-b-bg: #331226;
+    --status-action: #FFC845;
+    --status-action-bg: #3D2B00;
+    --status-live: #00E28A;
+    --status-live-bg: #00301C;
+    --status-done: #7E8FB8;
+    --status-done-bg: #16203A;
   }
 }
 
+/* Explicit dark — set by core/theme/theme.ts. An attribute selector
+   always outranks a bare :root by specificity, regardless of source
+   order or which media query matched, so this correctly wins over both
+   the light default and the media-query fallback above. */
 :root[data-theme="dark"] {
-  --page: #07080D;
-  --ground: #12151D;
-  --ink: #E8EAF0;
-  --ink-muted: #9BA1B4;
-  --ink-faint: #5C6376;
-  --line: #262B36;
-  --divergence: #E8834F;
-  --convergence: #2FBF9F;
-  --judge: #9A8FE0;
+  --page: #1C140B;
+  --ground: #241A0F;
+  --ink: #F3EAD8;
+  --ink-muted: #B39A78;
+  --ink-faint: #6E5A3C;
+  --line: #3D3220;
+  --divergence: #E8734F;
+  --convergence: #3FCB9A;
+  --judge: #9B7BFF;
   --agent-a: #5FA3E0;
   --agent-a-bg: #16222E;
-  --agent-b: #E0709F;
+  --agent-b: #E07AA8;
   --agent-b-bg: #2A1620;
+  --status-action: #FF8A5C;
+  --status-action-bg: #3D2A18;
+  --status-live: #3FCB9A;
+  --status-live-bg: #123028;
+  --status-done: #B39A78;
+  --status-done-bg: #2E2716;
 }
 
+/* Two attribute selectors outrank the single-attribute rule above,
+   so this correctly wins whenever brand=electric AND theme=dark. */
+:root[data-brand="electric"][data-theme="dark"] {
+  --page: #060B18;
+  --ground: #0F1830;
+  --ink: #EAF0FF;
+  --ink-muted: #7E8FB8;
+  --ink-faint: #47547A;
+  --line: #1A2740;
+  --divergence: #FF5C79;
+  --convergence: #00E28A;
+  --judge: #8B9BFF;
+  --agent-a: #5C86FF;
+  --agent-a-bg: #16223D;
+  --agent-b: #FF6BB5;
+  --agent-b-bg: #331226;
+  --status-action: #FFC845;
+  --status-action-bg: #3D2B00;
+  --status-live: #00E28A;
+  --status-live-bg: #00301C;
+  --status-done: #7E8FB8;
+  --status-done-bg: #16203A;
+}
+
+/* Explicit light — wins over an OS dark preference the same way. */
 :root[data-theme="light"] {
-  --page: #E7E9EF;
-  --ground: #F5F6F9;
-  --ink: #1B1E27;
-  --ink-muted: #5B6070;
-  --ink-faint: #9096A6;
-  --line: #DDE1EA;
-  --divergence: #D9713E;
-  --convergence: #1E9E82;
-  --judge: #6E63B6;
-  --agent-a: #3D7EBF;
-  --agent-a-bg: #EAF2FA;
-  --agent-b: #B8477C;
-  --agent-b-bg: #FAEAF1;
+  --page: #FFFDF8;
+  --ground: #FFF7EE;
+  --ink: #241A0D;
+  --ink-muted: #8A6A4B;
+  --ink-faint: #C4AF8E;
+  --line: #FFDCC0;
+  --divergence: #D9502E;
+  --convergence: #1FA97E;
+  --judge: #7B4FFF;
+  --agent-a: #2E6FB0;
+  --agent-a-bg: #E7F0FA;
+  --agent-b: #C24B7C;
+  --agent-b-bg: #FBEAF1;
+  --status-action: #FF6B35;
+  --status-action-bg: #FFE7DA;
+  --status-live: #1FA97E;
+  --status-live-bg: #DFF5EC;
+  --status-done: #8A6A4B;
+  --status-done-bg: #F0E9DD;
+}
+
+:root[data-brand="electric"][data-theme="light"] {
+  --page: #FFFFFF;
+  --ground: #F7F9FF;
+  --ink: #0B1E3D;
+  --ink-muted: #5A6B8C;
+  --ink-faint: #9BAAC7;
+  --line: #DCE4F7;
+  --divergence: #E0405F;
+  --convergence: #00A876;
+  --judge: #5C6FE0;
+  --agent-a: #2F5CFF;
+  --agent-a-bg: #E9EEFF;
+  --agent-b: #FF3D9A;
+  --agent-b-bg: #FFE7F3;
+  --status-action: #FFC845;
+  --status-action-bg: #FFF3D6;
+  --status-live: #00E28A;
+  --status-live-bg: #DAFBEC;
+  --status-done: #5A6B8C;
+  --status-done-bg: #E4E7EF;
 }
 
 * {
