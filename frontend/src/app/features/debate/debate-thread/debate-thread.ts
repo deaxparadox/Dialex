@@ -91,10 +91,6 @@ export class DebateThread {
   private readonly debateStream = inject(DebateStream);
   private readonly destroyRef = inject(DestroyRef);
 
-  // Theme deliberately stays local, not a query param (spec 0007) — it's a
-  // personal display preference, not "which view of this debate," and a
-  // shared link shouldn't force the sharer's theme on whoever opens it.
-  readonly theme = signal<'light' | 'dark'>('light');
   // Kept exactly as it renders today per explicit instruction (spec 0016) —
   // there's no more reading-panel for 'detail' to open, so this is currently
   // a no-op, reserved for a future definition rather than removed.
@@ -335,11 +331,6 @@ export class DebateThread {
       clearInterval(this.pollHandle);
       this.pollHandle = null;
     }
-  }
-
-  setTheme(mode: 'light' | 'dark') {
-    this.theme.set(mode);
-    document.documentElement.setAttribute('data-theme', mode);
   }
 
   setMode(mode: 'minimal' | 'detail') {

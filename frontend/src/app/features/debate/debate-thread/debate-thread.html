@@ -6,10 +6,6 @@
   <div class="shell">
     <div class="header-card">
       <div class="topline">
-        <div class="toggle">
-          <button [class.active]="theme() === 'light'" (click)="setTheme('light')">Light</button>
-          <button [class.active]="theme() === 'dark'" (click)="setTheme('dark')">Dark</button>
-        </div>
         <div class="mode-toggle">
           <button [class.active]="mode() === 'minimal'" (click)="setMode('minimal')">Minimal</button>
           <button [class.active]="mode() === 'detail'" (click)="setMode('detail')">Detail</button>
