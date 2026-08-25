@@ -19,7 +19,7 @@
   --ground: #FFF7EE;
   --ink: #241A0D;
   --ink-muted: #8A6A4B;
-  --ink-faint: #C4AF8E;
+  --ink-faint: #9C8B71;
   --line: #FFDCC0;
   --divergence: #D9502E;
   --convergence: #1FA97E;
@@ -60,7 +60,7 @@
   --ground: #F7F9FF;
   --ink: #0B1E3D;
   --ink-muted: #5A6B8C;
-  --ink-faint: #9BAAC7;
+  --ink-faint: #828EA7;
   --line: #DCE4F7;
   --divergence: #E0405F;
   --convergence: #00A876;
@@ -78,16 +78,25 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  /* System prefers dark and no explicit data-theme override. Reuses the
-     bare :root selector at the same specificity as the light default
-     above — CSS resolves the tie by source order, so this later block
-     correctly wins whenever the media query matches. */
-  :root {
+  /* System prefers dark and no explicit data-theme override. `Theme`
+     always writes `data-brand` explicitly (even for the default "citrus"),
+     so the light default above is actually matched via its
+     `:root[data-brand="citrus"]` half — specificity (0,1,0), NOT the bare
+     `:root` half at (0,0,0). To tie (rather than lose to) that rule, this
+     selector must mirror the same shape: `:root, :root[data-brand="citrus"]`
+     also matches at (0,1,0) once data-brand="citrus" is set. With specificity
+     tied, the cascade falls back to source order — this block comes later
+     in the file than the light default, so it correctly wins whenever the
+     media query matches. (A bare `:root` here, as before, would lose the
+     tie-break entirely: (0,0,0) is strictly lower than (0,1,0), so the
+     light default would always win regardless of source order — that was
+     the bug.) */
+  :root, :root[data-brand="citrus"] {
     --page: #1C140B;
     --ground: #241A0F;
     --ink: #F3EAD8;
     --ink-muted: #B39A78;
-    --ink-faint: #6E5A3C;
+    --ink-faint: #79664A;
     --line: #3D3220;
     --divergence: #E8734F;
     --convergence: #3FCB9A;
@@ -109,7 +118,7 @@
     --ground: #0F1830;
     --ink: #EAF0FF;
     --ink-muted: #7E8FB8;
-    --ink-faint: #47547A;
+    --ink-faint: #5B6688;
     --line: #1A2740;
     --divergence: #FF5C79;
     --convergence: #00E28A;
@@ -127,16 +136,23 @@
   }
 }
 
-/* Explicit dark — set by core/theme/theme.ts. An attribute selector
-   always outranks a bare :root by specificity, regardless of source
-   order or which media query matched, so this correctly wins over both
-   the light default and the media-query fallback above. */
+/* Explicit dark — set by core/theme/theme.ts. This is a single-attribute
+   selector, `:root[data-theme="dark"]`, at specificity (0,1,0) — the SAME
+   specificity as `:root[data-brand="citrus"]` (the light default, matched
+   above) and as the media-query fallback's citrus selector above (also
+   (0,1,0) after the fix in that block). It does not "outrank" either by
+   specificity; it wins because it's a genuine tie broken by source order —
+   this block appears later in the file than both, so it correctly wins
+   over the light default and the media-query fallback whenever
+   data-theme="dark" is set. (It still loses, correctly, to the
+   higher-specificity (0,2,0) electric+dark combo rule below when
+   data-brand="electric" is also set.) */
 :root[data-theme="dark"] {
   --page: #1C140B;
   --ground: #241A0F;
   --ink: #F3EAD8;
   --ink-muted: #B39A78;
-  --ink-faint: #6E5A3C;
+  --ink-faint: #79664A;
   --line: #3D3220;
   --divergence: #E8734F;
   --convergence: #3FCB9A;
@@ -160,7 +176,7 @@
   --ground: #0F1830;
   --ink: #EAF0FF;
   --ink-muted: #7E8FB8;
-  --ink-faint: #47547A;
+  --ink-faint: #5B6688;
   --line: #1A2740;
   --divergence: #FF5C79;
   --convergence: #00E28A;
@@ -177,13 +193,21 @@
   --status-done-bg: #16203A;
 }
 
-/* Explicit light — wins over an OS dark preference the same way. */
+/* Explicit light — set by core/theme/theme.ts. Same tie situation as the
+   explicit-dark block above: `:root[data-theme="light"]` is a
+   single-attribute selector at (0,1,0), tied with the light default's
+   matched selector and with the media-query dark fallback's citrus
+   selector (also (0,1,0)). It wins over an OS dark preference not because
+   it "outranks" that rule by specificity, but because the tie is broken by
+   source order — this block comes later in the file than the media-query
+   fallback above, so it correctly wins whenever data-theme="light" is set,
+   even when the OS prefers dark. */
 :root[data-theme="light"] {
   --page: #FFFDF8;
   --ground: #FFF7EE;
   --ink: #241A0D;
   --ink-muted: #8A6A4B;
-  --ink-faint: #C4AF8E;
+  --ink-faint: #9C8B71;
   --line: #FFDCC0;
   --divergence: #D9502E;
   --convergence: #1FA97E;
@@ -205,7 +229,7 @@
   --ground: #F7F9FF;
   --ink: #0B1E3D;
   --ink-muted: #5A6B8C;
-  --ink-faint: #9BAAC7;
+  --ink-faint: #828EA7;
   --line: #DCE4F7;
   --divergence: #E0405F;
   --convergence: #00A876;

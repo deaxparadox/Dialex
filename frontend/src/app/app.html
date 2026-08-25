@@ -21,9 +21,9 @@
           type="button"
           class="theme-mode-toggle"
           (click)="toggleMode()"
-          [attr.aria-label]="theme.mode() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+          [attr.aria-label]="theme.effectiveMode() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
         >
-          {{ theme.mode() === 'dark' ? '☾' : '☀' }}
+          {{ theme.effectiveMode() === 'dark' ? '☾' : '☀' }}
         </button>
         <button type="button" (click)="logout()">Log out</button>
       </div>

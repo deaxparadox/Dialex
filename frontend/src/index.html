@@ -6,6 +6,29 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/svg+xml" href="dialex-logo.svg">
+  <script>
+    // Pre-paint theme bootstrap — the deliberate synchronous counterpart to
+    // core/theme/theme.ts's Theme.applyToDocument(). Theme's constructor
+    // doesn't run until Angular bootstraps App, which is after the browser
+    // has already applied styles.css using the CSS-only cascade (system
+    // preference only). Without this, a user who persisted an explicit
+    // mode/brand different from their OS preference sees a flash of the
+    // wrong palette on every load. Duplicating the localStorage key names
+    // here instead of importing theme.ts is intentional — an inline
+    // pre-paint script can't import a TS module.
+    (function () {
+      try {
+        var brand = localStorage.getItem('dialex-theme-brand');
+        var mode = localStorage.getItem('dialex-theme-mode');
+        if (brand === 'electric') document.documentElement.setAttribute('data-brand', brand);
+        if (mode === 'light' || mode === 'dark') document.documentElement.setAttribute('data-theme', mode);
+      } catch (e) {
+        // localStorage unavailable (e.g. private browsing) — the CSS
+        // media-query fallback in styles.css handles the no-attributes
+        // case correctly, so there's nothing else to do here.
+      }
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

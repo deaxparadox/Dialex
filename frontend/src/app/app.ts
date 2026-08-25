@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 
 import { Auth } from './core/auth/auth';
-import { Theme, ThemeBrand } from './core/theme/theme';
+import { Theme } from './core/theme/theme';
 
 @Component({
   selector: 'app-root',
@@ -16,16 +16,14 @@ export class App {
   protected readonly theme = inject(Theme);
 
   onBrandChange(value: string): void {
-    this.theme.setBrand(value as ThemeBrand);
+    this.theme.setBrand(value === 'electric' ? 'electric' : 'citrus');
   }
 
   toggleMode(): void {
-    const current = this.theme.mode();
-    // Toggling from "follow system" flips whatever's currently showing,
-    // not a hardcoded starting point.
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const currentlyDark = current === 'dark' || (current === null && systemPrefersDark);
-    this.theme.setMode(currentlyDark ? 'light' : 'dark');
+    // Toggling from "follow system" flips whatever's currently showing
+    // (Theme.effectiveMode(), which already accounts for matchMedia when
+    // mode() is null), not a hardcoded starting point.
+    this.theme.setMode(this.theme.effectiveMode() === 'dark' ? 'light' : 'dark');
   }
 
   async logout(): Promise<void> {

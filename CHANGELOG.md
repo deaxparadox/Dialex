@@ -3,6 +3,7 @@
 ## 2026-08-25 (multi-theme token system — Phase 1)
 
 - Dual-brand multi-theme color system (Sunlit Citrus / Electric Contrast, each with light + dark) — Phase 1 of the product shell redesign (spec 0032, ADR 0011). Includes: `core/theme/theme.ts` service (persisted brand+mode preference), `styles.css` rewritten as a 4-way token matrix, temporary nav controls to try both brands/modes, and `debate-thread`'s old local/unpersisted light-dark toggle retired in favor of the global system.
+- Final pre-merge fix wave for Phase 1, from the whole-branch review: fixed a critical CSS-specificity bug where a new user on a dark-preferring OS with no saved preference got the light citrus palette instead of dark (`styles.css`'s `@media (prefers-color-scheme: dark)` default now ties, and wins by source order, instead of losing outright); added `Theme.effectiveMode()` so the mode-toggle's label/action agree with what's actually on screen when mode is unset; raised `--ink-faint` contrast to ≥3:1 against `--ground` in all 4 palettes (was 2.0–2.6:1); added a pre-paint bootstrap script in `index.html` to kill a flash-of-wrong-theme on load; plus minor cleanup (unchecked cast, unguarded `localStorage`, dead CSS, test cleanup). Verified empirically in real headless Chrome (not jsdom) across all 8 brand/mode/OS-preference combinations.
 
 ## 2026-08-18 (debate-side policy grounding + dedicated loan_approval personas)
 

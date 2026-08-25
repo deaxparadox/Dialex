@@ -1,12 +1,36 @@
 import { TestBed } from '@angular/core/testing';
 import { Theme } from './theme';
 
+// The test environment (jsdom, via @angular/build:unit-test) doesn't
+// implement window.matchMedia at all, but Theme.effectiveMode() calls it
+// directly (per its spec) to resolve "follow system". Stub it so tests can
+// control which OS preference Theme observes.
+function mockMatchMedia(matches: boolean): void {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: (query: string) => ({
+      matches,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }),
+  });
+}
+
 describe('Theme', () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.removeAttribute('data-brand');
     document.documentElement.removeAttribute('data-theme');
+    mockMatchMedia(false);
     TestBed.configureTestingModule({});
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+    document.documentElement.removeAttribute('data-brand');
+    document.documentElement.removeAttribute('data-theme');
   });
 
   it('defaults to citrus brand and no explicit mode', () => {
@@ -54,5 +78,27 @@ describe('Theme', () => {
     expect(service.mode()).toBe('dark');
     expect(document.documentElement.getAttribute('data-brand')).toBe('electric');
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+  });
+
+  it('effectiveMode() resolves an explicit mode without consulting matchMedia', () => {
+    const service = TestBed.inject(Theme);
+    service.setMode('dark');
+    expect(service.effectiveMode()).toBe('dark');
+    service.setMode('light');
+    expect(service.effectiveMode()).toBe('light');
+  });
+
+  it('effectiveMode() falls back to the system preference when mode is unset', () => {
+    mockMatchMedia(true); // OS prefers dark
+    const service = TestBed.inject(Theme);
+    expect(service.mode()).toBeNull();
+    expect(service.effectiveMode()).toBe('dark');
+  });
+
+  it('effectiveMode() resolves to light when mode is unset and the system prefers light', () => {
+    mockMatchMedia(false);
+    const service = TestBed.inject(Theme);
+    expect(service.mode()).toBeNull();
+    expect(service.effectiveMode()).toBe('light');
   });
 });
