@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-08-25 (multi-theme token system — Phase 1)
+
+- Dual-brand multi-theme color system (Sunlit Citrus / Electric Contrast, each with light + dark) — Phase 1 of the product shell redesign (spec 0032, ADR 0011). Includes: `core/theme/theme.ts` service (persisted brand+mode preference), `styles.css` rewritten as a 4-way token matrix, temporary nav controls to try both brands/modes, and `debate-thread`'s old local/unpersisted light-dark toggle retired in favor of the global system.
+
 ## 2026-08-18 (debate-side policy grounding + dedicated loan_approval personas)
 
 - Closes ADR 0010's part 2: `policy_context` (spec 0030's rename of the unused `research_guardrail_prompt`) now flows into every participant's argument prompt and the judge's verdict prompt — not just the consultant's intake. `research_debate`'s empty `policy_context` keeps its prompts byte-for-byte unaffected.
