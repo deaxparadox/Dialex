@@ -15,21 +15,24 @@ const MODE_KEY = 'dialex-theme-mode';
  * theme signal with one global, persisted source of truth. */
 @Service()
 export class Theme {
-  readonly brand = signal<ThemeBrand>(this.readBrand());
-  readonly mode = signal<ThemeMode | null>(this.readMode());
+  private readonly _brand = signal<ThemeBrand>(this.readBrand());
+  private readonly _mode = signal<ThemeMode | null>(this.readMode());
+
+  readonly brand = this._brand.asReadonly();
+  readonly mode = this._mode.asReadonly();
 
   constructor() {
     this.applyToDocument();
   }
 
   setBrand(brand: ThemeBrand): void {
-    this.brand.set(brand);
+    this._brand.set(brand);
     localStorage.setItem(BRAND_KEY, brand);
     this.applyToDocument();
   }
 
   setMode(mode: ThemeMode | null): void {
-    this.mode.set(mode);
+    this._mode.set(mode);
     if (mode === null) {
       localStorage.removeItem(MODE_KEY);
     } else {
@@ -39,8 +42,8 @@ export class Theme {
   }
 
   private applyToDocument(): void {
-    document.documentElement.setAttribute('data-brand', this.brand());
-    const mode = this.mode();
+    document.documentElement.setAttribute('data-brand', this._brand());
+    const mode = this._mode();
     if (mode === null) {
       document.documentElement.removeAttribute('data-theme');
     } else {
