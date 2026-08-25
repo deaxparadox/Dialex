@@ -73,3 +73,19 @@
   flex: 1;
   min-height: 0;
 }
+
+.theme-brand-select {
+  background: var(--page);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 10px;
+  color: var(--ink-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.theme-mode-toggle {
+  font-size: 13px;
+  line-height: 1;
+  padding: 6px 10px;
+}

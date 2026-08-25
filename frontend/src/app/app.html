@@ -8,6 +8,23 @@
       <div class="topbar-nav">
         <a routerLink="/debates">My debates</a>
         <a routerLink="/consultation">New case</a>
+        <select
+          class="theme-brand-select"
+          [value]="theme.brand()"
+          (change)="onBrandChange($any($event.target).value)"
+          aria-label="Color theme"
+        >
+          <option value="citrus">Citrus</option>
+          <option value="electric">Electric</option>
+        </select>
+        <button
+          type="button"
+          class="theme-mode-toggle"
+          (click)="toggleMode()"
+          [attr.aria-label]="theme.mode() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+        >
+          {{ theme.mode() === 'dark' ? '☾' : '☀' }}
+        </button>
         <button type="button" (click)="logout()">Log out</button>
       </div>
     </div>
