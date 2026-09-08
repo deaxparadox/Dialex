@@ -38,7 +38,7 @@ The existing `backend/`/`orchestrator/`/`frontend/` directories stay in this rep
 1. **Done** (this ADR documents it retroactively — a process gap, logged here rather than silently left unrecorded): the three repos extracted and pushed.
 2. **Done** (2026-09-08, spec 0042): platform-infra compose built here plus each service repo's own compose, joined via the shared external network `dialex-net`.
 3. **Done** (2026-09-08): brought up the full split stack and ran the end-to-end real-browser journey (register → login → Home → My debates → a real consultation → a live debate run with genuine WS streaming → Human Review/verdict → notifications → logout/login/reload/logout) against the *new* split setup specifically — passed clean, zero functionality lost. See spec 0042 and CHANGELOG.md for the full verification detail, including two non-blocking findings logged in TODO.md.
-4. **Unblocked, not yet done**: delete `backend/`/`orchestrator/`/`frontend/` from this repo, add a CLAUDE.md note documenting the new multi-repo layout and how to bring the whole stack up for local dev. Destructive within this repo — proceeding only on explicit user go-ahead, not automatically off step 3's pass.
+4. **Done** (2026-09-08, explicit user go-ahead given after step 3's PASS): `backend/`/`orchestrator/`/`frontend/` deleted from this repo; `CLAUDE.md` gained a "Repo layout" section documenting the split and the local-dev bring-up order. This ADR is now fully closed.
 
 ## What this doesn't cover
 

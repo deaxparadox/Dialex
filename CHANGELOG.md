@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-08 (multi-repo split — cutover complete, old copies deleted)
+
+- ADR 0013's final step: `backend/`, `orchestrator/`, and `frontend/` deleted from this repo (`git rm -r`) now that the split setup passed its full regression check (see the entry directly below). Full history for all three is preserved in `dialex-backend`/`dialex-orchestrator`/`dialex-frontend` (extracted earlier via `git filter-repo`) — nothing lost, just no longer duplicated here.
+- `CLAUDE.md` gained a new "Repo layout" section documenting the split: this repo is platform-infra only now (`db`/`redis`/`temporal`/`temporal-postgresql`/`temporal-ui` on external network `dialex-net`), the three service repos hold the actual application code, and the exact bring-up order for local dev (platform-infra here first, then each service repo's own `docker-compose.yml`, then `dialex-frontend` via `npm run dev`) — including a callout of the port-3000/CORS-allow-list gotcha hit during this split's own verification.
+- ADR 0013 is now fully closed — all four sequencing steps done.
+
 ## 2026-09-08 (multi-repo split — platform-infra compose split, verified)
 
 - Implemented spec 0042: `backend/dynamicconfig/development-sql.yaml` relocated to this repo's own `dynamicconfig/` (a platform-infra concern, not a Django one); this repo's `docker-compose.yml` reduced to `db`/`redis`/`temporal`/`temporal-postgresql`/`temporal-ui` on a new named external network `dialex-net`; new `docker-compose.yml` added to `dialex-backend` (single `django` service) and `dialex-orchestrator` (`orchestrator`+`orchestrator-worker`), each joining `dialex-net` as external rather than owning it. `dialex-frontend` stays uncontainerized, matching this project's own long-standing precedent.

@@ -22,4 +22,24 @@ These rules are binding for every session in this repo. They override default be
   - **Token usage, response time, or step count are never valid reasons to skip or shrink any step above.** If a task feels too small or too obvious for this process to be "worth it," that feeling is the exact signal to slow down — it's precisely when shortcuts get rationalized away. Shrink the artifact (a one-line spec, a short `TODO.md` entry), never the steps.
 - **Scaffold with the framework's own generator — never hand-write what it can produce.** Before creating any new framework-specific file (component, model, controller, migration, module, route, config, test stub, or an entire project skeleton), check whether the framework/tool has a native generate/scaffold command for it — e.g. `rails g`, `php artisan make:*`, `ng generate`, `django-admin startapp`, `cargo new`, `npx create-next-app`, `vue create`, `dotnet new` — and use that instead of writing the file by hand. Generators encode current-version conventions and often perform wiring (route registration, manifest updates, paired test-file creation) that's easy to miss by hand and easy to get subtly wrong from memory. Only hand-write a file when no generator exists for that file type. **If the target file already exists, stop and ask before running the generator** — never let an overwrite prompt or a force flag resolve it silently; a customized file getting silently clobbered is exactly the kind of invisible default rule 5 already forbids. Generated output still gets reviewed against the spec/principles before being treated as done — the generator earns you the scaffold, not an exemption from rule 3.
 
+## Repo layout (as of ADR 0013 — multi-repo service split, 2026-09-08)
+
+This repo (`project-organizer`, remote `deaxparadox/Dialex`) no longer holds the application code. It is **platform infra only**: `docker-compose.yml` here brings up the shared services every product's service repo depends on — `db` (Postgres), `redis`, `temporal`, `temporal-postgresql`, `temporal-ui` — on a named external Docker network, `dialex-net`. `dynamicconfig/` holds Temporal's own dynamic-config YAML.
+
+The actual application code lives in three sibling repos under `~/Documents/gt-dp/`, each the shared home for every product as internal modules (a Django app per product, an orchestrator module per product, a frontend route-tree per product) — Dialex's debate/consultation code is the first and so far only tenant:
+
+- **`dialex-backend`** (`github.com/deaxparadox/dialex-backend`) — Django REST API.
+- **`dialex-orchestrator`** (`github.com/deaxparadox/dialex-orchestrator`) — FastAPI + Temporal + LangGraph, two services (`orchestrator` API, `orchestrator-worker` Temporal worker).
+- **`dialex-frontend`** (`github.com/deaxparadox/dialex-frontend`) — Next.js. Never containerized (long-standing precedent, predates the split); run via `npm run dev` directly against the other services' host-published ports.
+
+**Bringing up the whole stack for local dev**, in order:
+1. Here: `docker compose up -d` — creates `dialex-net` and starts the 5 infra services.
+2. In `dialex-backend`: `docker compose up -d --build` (own `.env`, needs `POSTGRES_USER`/`PASSWORD`/`DB` matching this repo's `.env` since both address the same `db` service by container hostname).
+3. In `dialex-orchestrator`: `docker compose up -d --build` (same `.env` pattern, plus its own secrets).
+4. In `dialex-frontend`: `npm install` (first time) then `npm run dev` — expects `localhost:3000`; the backend's `CORS_ALLOWED_ORIGINS` default only trusts that exact origin, so if port 3000 is already taken by something else on the machine, free it rather than letting Next.js fall back to another port (a real, repro'd regression during this split's own verification — see CHANGELOG.md 2026-09-08).
+
+Each service repo's own `docker-compose.yml` declares `dialex-net` as `external: true` — it doesn't own the network's lifecycle, this repo does. Bring platform-infra up first; the others depend on it.
+
+Every product beyond Dialex (cofounder agent, EcosystemAI-style orchestration, XTTS voice cloning) gets folded into these same three repos later, one at a time — see `docs/adr/0013-multi-repo-service-split.md` for the full decision record and sequencing.
+
 ---
