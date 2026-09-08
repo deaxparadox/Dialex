@@ -64,3 +64,21 @@ Django: `makemigrations`, `migrate` clean against the real DB; regenerated `gene
 ## Branch
 
 Continuing on `main` in all three repos, matching every prior phase.
+
+## Found during implementation
+
+Django app scaffolded via `manage.py startapp chat apps/cofounder/chat` (per CLAUDE.md's use-the-generator rule) rather than hand-writing the skeleton — `startapp` requires the destination directory to already exist and sets `name` to the bare directory name, both corrected afterward (`mkdir` first, `name`/`label` fixed in `apps.py`).
+
+A real message-duplication bug caught before it ever ran, not during testing: `submit_message` calls `persist_cofounder_turn` (the user's message) *before* `fetch_cofounder_turns`, so the fetched turn list already ends with the current message — exactly matching `ConsultationWorkflow`'s own order. An initial draft of `generate_cofounder_reply` built the message list from `turns` and then appended `text` again at the end, which would have sent every user message to the LLM twice. Fixed by dropping the `text` parameter from the activity entirely — the last item in `turns` already *is* the current message.
+
+A real worker-startup crash on first run: `ValueError: More than one activity named persist_turn`. Temporal's `@activity.defn` defaults the registered name to the plain function name (verified against the SDK docs during spec 0043), and `persist_turn`/`fetch_turns` already existed in `dialex/consultations/activities.py`, registered on the same worker process and task queue (`dialex-debates`). Fixed by renaming the new activities `persist_cofounder_turn`/`fetch_cofounder_turns`/`generate_cofounder_reply`. Also hit stale bind-mounted `__pycache__` (owned by the container's root user, same issue as spec 0042/0043) masking the fix on first restart — cleared via a one-off `alpine` container the same way as before.
+
+`core/observability.py` gained `bind_cofounder_context` + a `_cofounder_session_id_var` ContextVar/log field, matching `bind_debate_context`/`bind_consultation_context` exactly — a genuine, minimal extension of shared `core/` infra per-product, not a violation of its product-agnostic role (ADR 0014).
+
+## Found during verification
+
+No bugs beyond the two above (both caught and fixed before/at the real-browser pass, not during it). Verified via real API calls (not curl-only-then-assume): registered two real users, started a real session, sent two real messages confirming genuine LLM replies and correct conversation recall across turns (cross-checked against the actual `cofounder_chat_cofounderturn` rows — exactly 4 rows, correctly ordered, no duplication), and confirmed the ownership check via a real cross-user 404 attempt (not a code read — an actual second user hitting the first user's session). `generated_tables.py`'s regenerated diff showed exactly the two new tables, nothing else. A full real-browser pass (Canary) confirmed the same behavior through the actual UI: nav link present, real coherent replies, correct two-turn recall, a reload correctly starting a fresh session (expected, no resume in this phase) rather than erroring, and zero regression to Home/Debates/New case — 170 requests captured, only 4 non-2xx (`401`s on `/api/auth/refresh/` during the pre-login anonymous probe, a pre-existing pattern investigated and closed during spec 0043, unrelated to this feature).
+
+## Status
+
+Implemented and verified against the real running stack, all three repos. Committed in each (`dialex-backend`, `dialex-orchestrator`, `dialex-frontend`) on `main`; not yet pushed to any of their remotes — pending the same explicit go-ahead as the earlier ADR 0013/0014 sibling-repo commits. Phase 1b (the real `entrepreneur_graph`/tools) is not yet specced.

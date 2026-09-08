@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-08 (cofounder-agent port, Phase 1a — chat mechanism)
+
+- Spec 0044: a new `apps.cofounder.chat` Django app (`CofounderSession`/`CofounderTurn`), a `CofounderWorkflow` in `dialex-orchestrator` mirroring `ConsultationWorkflow`'s long-running-Update pattern, and a minimal `(protected)/cofounder` chat page — proves the Django-owns-data/Temporal-owns-execution mechanism end to end with a single plain LLM call (no LangGraph graph, no tools yet, no WebSocket — the original's reply is already synchronous, verified against its actual source).
+- Two real bugs caught during implementation, before/at first run: a message-duplication bug (the workflow persists the user's turn before fetching history, so the fetched list already includes it — an activity almost appended it a second time) and a Temporal activity-name collision at worker startup (`persist_turn`/`fetch_turns` already existed in `consultations/activities.py`, sharing the same worker/task queue — fixed by prefixing the new ones `cofounder_*`).
+- Verified via direct API + DB checks (a real multi-turn conversation with correct recall, correct 404 on cross-user access) and a full real-browser pass — clean, no regression to the existing Home/Debates/New case flows. The real `entrepreneur_graph` and its tools (2 have no data source in this platform yet, 3 need individual new-dependency approval) are deliberately deferred to Phase 1b+. See [docs/adr/0014-cofounder-agent-product-isolation-and-port.md](docs/adr/0014-cofounder-agent-product-isolation-and-port.md) and [docs/specs/0044-cofounder-phase1a-chat-mechanism.md](docs/specs/0044-cofounder-phase1a-chat-mechanism.md).
+
 ## 2026-09-08 (cofounder-agent port, Phase 0 — product-isolation scaffold)
 
 - ADR 0014 + spec 0043: moved Dialex's existing code into nested per-product packages across all three service repos, making room for the AI cofounder agent ("Brunda") as the platform's second product — `apps.dialex.*` (`dialex-backend`), `app.dialex.*` (`dialex-orchestrator`), `(protected)/dialex/*` (`dialex-frontend`, full symmetry after confirming the dev DB could be freely wiped). Home dashboard (`/`) stays put — no cross-product launcher exists yet. Zero functional change.
