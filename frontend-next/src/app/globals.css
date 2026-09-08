@@ -253,6 +253,13 @@ body {
   to { opacity: 1; }
 }
 
+/* Debate thread's 3-dot thinking indicator (spec 0038, ported from
+   debate-thread.css). */
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
 :focus-visible {
   outline: 2px solid var(--judge);
   outline-offset: 2px;

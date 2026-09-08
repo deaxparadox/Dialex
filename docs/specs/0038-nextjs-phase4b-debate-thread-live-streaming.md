@@ -46,6 +46,19 @@ Human Review, notifications — Phases 5-6. Any redesign of the swap-gap/reconne
 
 Real browser: start a genuine debate from `OPEN` through the Next.js page (not pre-seeded data, unlike spec 0037) and watch it run live end to end — confirm `turn_started` produces the correct "X is thinking…" bubble on the correct side before any content exists, token-by-token growth is visible for the opening statement/arguments/verdict, the swap from streaming to final content shows no blank gap or flicker (the exact regression spec 0029 fixed in Angular — re-verify it doesn't recur here), the verdict-reconnect branch never flashes stale argument text (reload the page mid-verdict-generation if timing allows, or reason from code inspection if a real mid-verdict reload can't be reliably timed). Confirm a WS drop falls back to polling (can be forced by closing the connection from devtools/a raw client). Confirm `frontend/` unaffected, its own tests still pass. This is the highest-risk phase in the whole migration — verification should not be a glance.
 
+## Found during verification
+
+Two real, full debate runs via a real browser (Canary), started fresh from `OPEN` through the Next.js page itself (not pre-seeded data):
+
+- **First run** (`research_debate`, debate 69) hit a real, **pre-existing backend bug unrelated to this migration**: the LLM's free-text `position` value (this case type's `position_options` is `[]`, fully free-form) exceeded the `debates_argument.position` column's 255-char limit, crashing the whole debate to `FAILED` via an uncaught `StringDataRightTruncationError` — confirmed directly in the orchestrator-worker logs, not guessed. Would hit the Angular frontend identically; not caused by anything in this spec. Logged in `TODO.md` for its own future fix, not touched here. Also noted: a `FAILED` debate's API response carries no error/reason field at all, so neither frontend can explain the failure to the user — also logged, not fixed (out of scope).
+- **Second run** (`loan_approval`, debate 70 — chosen specifically because its fixed `position_options` can't hit the bug above) passed cleanly end to end: the opening statement visibly grew across polls (a partial sentence, then the full paragraph) rather than popping in instantly; a "Credit Risk Officer is thinking…" bubble appeared before that argument's real text, which then grew incrementally before settling with its position/confidence line; across ~45 polls through all 6 arguments and the verdict, no bubble ever disappeared, reverted to a thinking-indicator, or showed stale content once real text had landed — the exact regression class spec 0029 fixed in Angular did not recur here. The debate settled at `NO_CONSENSUS` (not `JUDGED` — the two personas never converged in position; both are valid terminal statuses per `Debate.Status`, and a verdict is produced either way, exactly as designed) with a real verdict (`approve`, confidence `0.9`, full reasoning citing the case's actual DTI/credit score/collateral figures). Reloading the page after completion rendered the identical final state with no WebSocket needed, `Live` badge correctly absent. Zero console/WebSocket errors throughout.
+
+`frontend/` (Angular) confirmed unaffected, 40/40 tests still pass.
+
+## Status
+
+Implemented and verified against the real running stack, including two genuine full LLM-driven debate runs. Closes Phase 4 of ADR 0012/spec 0033 (both 4a and 4b). Phase 5 (Human Review) is next, its own spec to be written before it starts — the first phase needing a new backend endpoint.
+
 ## Branch
 
 `migration/nextjs-frontend` (continuing).
