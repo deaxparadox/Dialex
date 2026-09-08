@@ -33,6 +33,14 @@ export interface ApiVerdict {
   created_at: string;
 }
 
+export interface ApiHumanReview {
+  id: number;
+  final_decision: string | null;
+  comment: string;
+  reviewer: number;
+  reviewed_at: string;
+}
+
 export interface ApiDebate {
   id: number;
   case_id: number;
@@ -45,6 +53,7 @@ export interface ApiDebate {
   closing_summary: string | null;
   judge_persona: ApiPersona;
   verdict: ApiVerdict | null;
+  human_review: ApiHumanReview | null;
   created_at: string;
   judged_at: string | null;
 }
@@ -105,5 +114,23 @@ export function useDebatesApi() {
     return res.json();
   }
 
-  return { getDebate, listDebates, listCases, getCase, getArguments, startDebate };
+  // The first real Django POST through this hook — needs the CSRF-cookie
+  // round-trip explicitly (spec 0036 stopped defaulting credentials:
+  // 'include' on every call, since the orchestrator never needs it; this
+  // one, hitting Django's CSRF-protected write path, does).
+  async function submitReview(
+    id: number,
+    body: { final_decision: string | null; comment: string }
+  ): Promise<ApiHumanReview> {
+    const res = await apiFetch(`/api/debates/${id}/review/`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(res.status === 409 ? 'already reviewed' : 'failed to submit review');
+    return res.json();
+  }
+
+  return { getDebate, listDebates, listCases, getCase, getArguments, startDebate, submitReview };
 }

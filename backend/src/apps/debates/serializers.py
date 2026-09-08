@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from apps.reviews.serializers import HumanReviewSerializer
+
 from .models import AgentPersona, Argument, Debate, Verdict
 
 
@@ -66,6 +68,10 @@ class DebateSerializer(serializers.ModelSerializer):
     judge_persona = AgentPersonaMiniSerializer(read_only=True)
     verdict = VerdictSerializer(read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    # Reverse OneToOneField accessor (debate.human_review) already exists on
+    # the model — no new query needed, just exposing it (spec 0039). `None`
+    # when unreviewed: DRF's default for a missing reverse one-to-one.
+    human_review = HumanReviewSerializer(read_only=True)
 
     class Meta:
         model = Debate
@@ -81,6 +87,7 @@ class DebateSerializer(serializers.ModelSerializer):
             "closing_summary",
             "judge_persona",
             "verdict",
+            "human_review",
             "created_at",
             "judged_at",
         )

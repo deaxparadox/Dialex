@@ -10,10 +10,11 @@ class CaseSerializer(serializers.ModelSerializer):
 
 
 class CaseTypeConfigSerializer(serializers.ModelSerializer):
-    """Just `type` — shared config for a case-type picker (spec 0010), not
-    the persona/round internals (those stay admin-only, no client needs
-    them)."""
+    """`type` for the case-type picker (spec 0010); `decision_options` added
+    (spec 0039) since the Human Review panel needs it client-side to decide
+    buttons-vs-comment-only. persona/round internals stay admin-only, no
+    client needs them."""
 
     class Meta:
         model = CaseTypeConfig
-        fields = ("type",)
+        fields = ("type", "decision_options")

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { humanizeSlug } from '@/lib/humanize-slug';
 import { useAuth } from '@/lib/auth-context';
 import { useDebatesApi, type ApiCase, type ApiDebate } from '@/lib/debates-api';
+import { useConsultationsApi } from '@/lib/consultations-api';
 import { useDebateStream } from '@/lib/debate-stream';
 import {
   agentOrderOf,
@@ -14,6 +15,9 @@ import {
   type DebateArgument,
 } from '@/lib/debate-thread-model';
 import { TypingIndicator } from '../../_components/typing-indicator';
+import { HumanReviewPanel } from './human-review-panel';
+
+const REVIEWABLE_STATUSES = new Set(['JUDGED', 'NO_CONSENSUS']);
 
 function timeFor(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -42,6 +46,7 @@ export default function DebateThreadPage({ params }: { params: Promise<{ id: str
   const debateId = Number(idParam);
 
   const api = useDebatesApi();
+  const consultationsApi = useConsultationsApi();
   const { accessToken } = useAuth();
   const debateStream = useDebateStream();
   const router = useRouter();
@@ -55,6 +60,7 @@ export default function DebateThreadPage({ params }: { params: Promise<{ id: str
   const [args, setArgs] = useState<DebateArgument[]>([]);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const [decisionOptions, setDecisionOptions] = useState<string[]>([]);
 
   const [generatingTurn, setGeneratingTurnState] = useState<GeneratingTurn | null>(null);
   const [streamingText, setStreamingText] = useState('');
@@ -85,7 +91,12 @@ export default function DebateThreadPage({ params }: { params: Promise<{ id: str
       const [d, apiArguments] = await Promise.all([api.getDebate(debateId), api.getArguments(debateId)]);
       setDebate(d);
       setArgs(fillRespondsToLabels(apiArguments.map(mapArgument)));
-      if (!caseData) setCaseData(await api.getCase(d.case_id));
+      if (!caseData) {
+        const c = await api.getCase(d.case_id);
+        setCaseData(c);
+        const caseTypes = await consultationsApi.getCaseTypes();
+        setDecisionOptions(caseTypes.find((t) => t.type === c.type)?.decision_options ?? []);
+      }
 
       if (ACTIVE_STATUSES.has(d.status)) {
         openStream();
@@ -190,6 +201,12 @@ export default function DebateThreadPage({ params }: { params: Promise<{ id: str
     const el = threadRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [args, generatingTurn, streamingText]);
+
+  async function submitReview(body: { final_decision: string | null; comment: string }): Promise<void> {
+    if (!debate) return;
+    const review = await api.submitReview(debate.id, body);
+    setDebate({ ...debate, human_review: review });
+  }
 
   function setMode(next: 'minimal' | 'detail'): void {
     const params = new URLSearchParams(searchParams);
@@ -474,6 +491,14 @@ export default function DebateThreadPage({ params }: { params: Promise<{ id: str
               </div>
             </>
           )
+        )}
+
+        {debate.verdict && REVIEWABLE_STATUSES.has(debate.status) && (
+          <HumanReviewPanel
+            humanReview={debate.human_review}
+            decisionOptions={decisionOptions}
+            onSubmit={submitReview}
+          />
         )}
       </div>
     </div>

@@ -48,6 +48,20 @@ Notifications — Phase 6. Any change to `DebateSerializer`'s existing fields be
 
 Real browser + direct API checks: a real `research_debate` (empty `decision_options`) and a real `loan_approval` (non-empty) both confirm the comment-only vs. buttons rendering; submitting a review persists it and the panel flips to read-only without a reload; a second submit attempt (reload then resubmit, or a direct duplicate API call) returns a clean 409, not a 500 or silent failure; an IDOR check confirms a debate not owned by the requester 404s on both the new endpoint and the enriched detail response; `frontend/` (Angular) confirmed unaffected, its tests still pass (this phase's backend change is additive-only — a new field, a new endpoint — so the existing Angular `ApiDebate` type simply ignores the new field it doesn't declare).
 
+## Found during implementation
+
+`GET /api/case-type-configs/` (`apps/cases/serializers.py`) only ever returned `type` — confirmed the panel genuinely needs `decision_options` client-side to decide buttons-vs-comment-only, so added it to `CaseTypeConfigSerializer`'s `fields` (one line). Purely additive; `frontend/`'s existing `ApiCaseType` interface (`{type: string}`) simply ignores the new field, no break.
+
+## Found during verification
+
+Direct API checks (curl) confirmed the backend in isolation before touching the frontend: a real submit returned `201` with the persisted row; an immediate duplicate submit returned a clean `409` with a plain message, not a 500; a cross-user IDOR attempt (submitting against another user's debate) returned `404`, matching every other debate endpoint's ownership pattern.
+
+Real Canary browser session, two debates: an already-reviewed `loan_approval` debate (decision `approve`, a comment, a timestamp) rendered fully read-only — zero `<textarea>`/`<button>` elements in the panel, confirming no leftover form; a fresh, unreviewed `research_debate` (empty `decision_options`) rendered comment-only (no decision buttons), correctly disabled submit with an empty comment, submitted successfully once filled, flipped to read-only immediately without a reload, and — reloaded — showed the identical read-only state, confirming the review is genuinely server-persisted, not just client-side optimism. A whole-page scan after submission confirmed no second submission form exists anywhere. Zero console errors throughout. `frontend/` (Angular) confirmed unaffected — this phase's backend changes are additive-only (a new field, a new endpoint), Angular's existing types simply don't declare them.
+
+## Status
+
+Implemented and verified against the real running stack, backend and frontend both. Closes Phase 5 of ADR 0012/spec 0033 (and Phase 3 of spec 0032/ADR 0011). Phase 6 (Notifications) is next, its own spec to be written before it starts — the read-path scope only, per spec 0032 Phase 4a (live push stays Phase 4b there, out of scope unless separately requested).
+
 ## Branch
 
 `migration/nextjs-frontend` (continuing).

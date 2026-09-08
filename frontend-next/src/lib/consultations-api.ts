@@ -5,8 +5,10 @@ import { config } from './config';
 
 // Ported field-for-field from
 // frontend/src/app/features/consultation/data/consultations-api.ts.
+// decision_options added (spec 0039) — the Human Review panel needs it.
 export interface ApiCaseType {
   type: string;
+  decision_options: string[];
 }
 
 export interface StartConsultationResponse {
