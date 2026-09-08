@@ -6,10 +6,10 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 
 // Ported from frontend/src/app/core/auth/auth-guard.ts's authGuard. Also
-// carries a minimal nav bar (Home/Debates/logout) — this route group only
-// ever had one page until Phase 2, so nothing needed one before now. Not
-// ADR 0011's full nav shell (no theme picker/notification bell/"New case"
-// yet — those need later phases' pages to exist first).
+// carries a minimal nav bar (Home/Debates/New case/logout) — this route
+// group only ever had one page until Phase 2, so nothing needed one before
+// now. Not ADR 0011's full nav shell yet (no theme picker/notification
+// bell — those need later phases' pages to exist first).
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, logout } = useAuth();
   const router = useRouter();
@@ -40,6 +40,9 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           </Link>
           <Link href="/debates" className="text-sm text-ink-muted hover:text-ink">
             Debates
+          </Link>
+          <Link href="/consultation" className="text-sm text-ink-muted hover:text-ink">
+            New case
           </Link>
         </div>
         <button onClick={onLogout} disabled={loggingOut} className="text-sm text-ink-muted hover:text-ink disabled:opacity-50">

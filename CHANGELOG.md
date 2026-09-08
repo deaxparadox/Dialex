@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-08 (Next.js migration Phase 3 — consultation chat)
+
+- New `/consultation` route in `frontend-next/`: case-type picker, message-turn flow, and the SSE step-indicator stream (`Thinking…`/`Double-checking…`/`Revising…`), ported from Angular's `consultation-chat`. The thinking-bubble's exact JS-measured pixel-width/3D-flip micro-animation (spec 0024) is simplified to a plain fade — same observable behavior, not the same mechanism (disclosed in spec 0036, not a silent cut). `(protected)`'s nav gains a "New case" link; `/debates`'s empty-state CTA (dropped in Phase 2 since its target didn't exist yet) is restored now that it does.
+- Found and fixed two real CORS bugs, the first time this app talked to the orchestrator (Phases 1/2 only ever hit Django): the orchestrator's own origin allow-list didn't trust `localhost:3000` (same gap as spec 0034's Django fix, different service); and the frontend's shared fetch wrapper hardcoded `credentials: 'include'` on every call, which the real Angular `auth-interceptor.ts` never actually does — harmless against Django (already configured for it) but broke every Bearer-only orchestrator call outright. Fixed by removing the hardcoded flag entirely.
+- Verified with 3 real Canary sessions (2 caught the bugs above, the 3rd passed end to end): a genuine multi-turn `loan_approval` negotiation, a premature "finalize now" correctly refused with the exact missing fields named, finalization once all fields were present, and a real "Approve and start debate" landing on `/debates/{id}` (a clean 404 there — expected, Phase 4 isn't built yet). `frontend/` (Angular) confirmed unaffected, 40/40 tests still pass. See [docs/specs/0036-nextjs-phase3-consultation-chat.md](docs/specs/0036-nextjs-phase3-consultation-chat.md).
+
 ## 2026-09-08 (Next.js migration Phase 2 — Home dashboard + My debates list)
 
 - `frontend-next/`'s `/` now shows the real Home dashboard ADR 0011 designed but never built in Angular: a "Needs your review" bucket (`JUDGED`/`NO_CONSENSUS` debates, oldest first) and a slimmer "In progress" bucket (`ARGUING`/`CONVERGING`, oldest first) — `OPEN`/`FAILED` debates deliberately excluded, visible only in the full archive.

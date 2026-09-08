@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useDebatesApi } from '@/lib/debates-api';
 import { buildRows, type DebateRow } from '@/lib/debate-rows';
 import { DebateRowLink } from '../_components/debate-row-link';
@@ -44,7 +45,9 @@ export default function DebatesPage() {
   if (rows.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 text-ink-muted">
-        <p>No debates yet.</p>
+        <p>
+          No debates yet. <Link href="/consultation" className="text-judge">Start your first case</Link>
+        </p>
       </div>
     );
   }

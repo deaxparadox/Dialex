@@ -245,6 +245,14 @@ body {
   }
 }
 
+/* Consultation chat's thinking-indicator label swap (spec 0036, ported
+   from consultation-chat.css's spec-0024 flip-in — simplified to a fade,
+   see spec 0036's own note on why). */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 :focus-visible {
   outline: 2px solid var(--judge);
   outline-offset: 2px;
