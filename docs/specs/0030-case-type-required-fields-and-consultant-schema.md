@@ -131,4 +131,4 @@ Verified end to end:
 
 ## Status
 
-Implemented and verified against the real running stack, backend/orchestrator only. Closes ADR 0010's part 1 of 2. Part 2 (debate-side `policy_context` injection, dedicated `loan_approval` personas, the `research_debate` participant-config fix) is a separate, not-yet-written spec, logged in `TODO.md`.
+Implemented and verified against the real running stack, backend/orchestrator only. Closes ADR 0010's part 1 of 2. Part 2 (debate-side `policy_context` injection, dedicated `loan_approval` personas, the `research_debate` participant-config fix) is done in [docs/specs/0031-debate-side-policy-grounding-and-loan-personas.md](docs/specs/0031-debate-side-policy-grounding-and-loan-personas.md) — ADR 0010 is fully closed.
