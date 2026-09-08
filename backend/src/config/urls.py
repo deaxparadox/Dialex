@@ -24,6 +24,7 @@ urlpatterns = [
     path('api/auth/', include('apps.accounts.urls')),
     path('api/cases/', include('apps.cases.urls')),
     path('api/debates/', include('apps.debates.urls')),
+    path('api/notifications/', include('apps.notifications.urls')),
     # Top-level, not nested under /api/cases/ — matches docs/API.md's
     # already-planned contract (shared config, not a Case resource).
     path('api/case-type-configs/', CaseTypeConfigListView.as_view(), name='case-type-config-list'),

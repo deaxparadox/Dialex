@@ -46,8 +46,8 @@ All endpoints below require a valid access token unless noted. List endpoints ar
 ### Notifications
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/notifications/` | The persisted inbox — filterable by read/unread. |
-| `POST` | `/api/notifications/{id}/read/` | Marks one notification read. |
+| `GET` | `/api/notifications/` | **Built and verified (spec 0040), read path only — differs from this doc's original plan below.** Ownership-scoped list, `-created_at` ordered (the model's own `Meta.ordering`). No read/unread filter param — the frontend sorts client-side, real volume doesn't justify one yet. |
+| `PATCH` | `/api/notifications/{id}/` | **Built and verified (spec 0040) — differs from this doc's original plan below (was `POST .../read/`).** Body: `{read: true}`. Ownership-checked (404, not a leaking 403, for a non-owned notification). |
 
 ## FastAPI — orchestration, live/streaming, data in motion
 

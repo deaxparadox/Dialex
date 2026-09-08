@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-08 (Next.js migration Phase 6 — notifications, read path)
+
+- New `GET /api/notifications/` (ownership-scoped) and `PATCH /api/notifications/{id}/` (mark read, ownership-checked, 404 not a leaking 403) — the `Notification` model existed since scaffold time (spec 0002) but had no endpoint until now. Read path only, matching spec 0032 Phase 4a exactly; live push (that spec's Phase 4b) stays out of scope.
+- `frontend-next/`'s nav gains a bell (unread-count badge, unread-first drawer, links straight to a notification's related debate and marks it read on click) plus a full `/notifications` archive page reusing the same data.
+- Verified via direct API checks (ownership scoping on the list, a clean 404 on a cross-user mark-read attempt) and a real Canary session against 3 seeded notifications: correct badge count, correct unread-first drawer ordering with a real visual distinction, mark-read persisting server-side (confirmed across both a re-open and a hard reload), the archive page matching the drawer's data exactly. `frontend/` (Angular) confirmed unaffected, 40/40 tests still pass. See [docs/specs/0040-nextjs-phase6-notifications-read-path.md](docs/specs/0040-nextjs-phase6-notifications-read-path.md).
+
 ## 2026-09-08 (Next.js migration Phase 5 — Human Review)
 
 - New `POST /api/debates/{id}/review/` (Django, `apps/reviews/`): ownership-checked (404 if not owned/nonexistent), 409 on a duplicate review — the `HumanReview` model (built at scaffold time, spec 0002, never wired to an endpoint until now) already enforces one-review-per-debate at the DB level via its `OneToOneField`; this endpoint just surfaces that as a clean 409 instead of a 500. `DebateSerializer` gains a nested `human_review` field (`null` until reviewed). `CaseTypeConfigSerializer` gains `decision_options` (previously not exposed to any client) — the panel needs it to decide buttons-vs-comment-only.

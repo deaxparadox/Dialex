@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { NotificationBell } from './_components/notification-bell';
 
 // Ported from frontend/src/app/core/auth/auth-guard.ts's authGuard. Also
-// carries a minimal nav bar (Home/Debates/New case/logout) — this route
-// group only ever had one page until Phase 2, so nothing needed one before
-// now. Not ADR 0011's full nav shell yet (no theme picker/notification
-// bell — those need later phases' pages to exist first).
+// carries a minimal nav bar (Home/Debates/New case/notifications bell/
+// logout) — this route group only ever had one page until Phase 2, so
+// nothing needed one before now. Not ADR 0011's full nav shell yet (no
+// theme picker — still deferred).
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, logout } = useAuth();
   const router = useRouter();
@@ -45,9 +46,12 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             New case
           </Link>
         </div>
-        <button onClick={onLogout} disabled={loggingOut} className="text-sm text-ink-muted hover:text-ink disabled:opacity-50">
-          {loggingOut ? 'Logging out…' : 'Log out'}
-        </button>
+        <div className="flex items-center gap-4">
+          <NotificationBell />
+          <button onClick={onLogout} disabled={loggingOut} className="text-sm text-ink-muted hover:text-ink disabled:opacity-50">
+            {loggingOut ? 'Logging out…' : 'Log out'}
+          </button>
+        </div>
       </nav>
       <main className="min-h-0 flex-1">{children}</main>
     </div>

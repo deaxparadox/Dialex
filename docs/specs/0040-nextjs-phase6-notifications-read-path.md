@@ -46,6 +46,16 @@ Live push (Phase 4b in spec 0032's own numbering) — the bell has no live unrea
 
 Seed a handful of `Notification` rows directly (mixed read/unread, at least one with a `related_debate`) for a real test user — no lifecycle code creates them yet, so this is the only way to get real data. Confirm the bell drawer lists them unread-first; clicking one with a `related_debate` navigates there and marks it read (confirm via a reload that the read state persisted, not just local UI state); confirm `/notifications` shows the full archive matching the same data. Confirm ownership scoping: a notification belonging to another user isn't visible and a direct `PATCH` against it 404s. Confirm `frontend/` (Angular) unaffected, its tests still pass.
 
+## Found during verification
+
+Direct API checks (curl) before touching the frontend: list correctly ownership-scoped (a second user's notification never appeared); mark-read (`PATCH`) succeeded (`200`) and persisted; a cross-user `PATCH` attempt against another user's notification returned a clean `404`, not a leak.
+
+Real Canary browser session against 3 seeded notifications (2 unread, 1 read) for a real test user: the bell badge showed the exact unread count (`1`); the drawer listed unread-first with a real visual distinction (a highlighted background on the unread row, not just text); clicking the unread one navigated to its `related_debate` and marked it read; reopening the drawer (and, separately, after a hard page reload) confirmed the read state persisted server-side, not just a local click flicker; `/notifications` showed the identical data as the drawer. One incidental, correctly-explained (not a bug) observation: after the read/unread re-sort, order among already-read items follows the server's `-created_at` ordering, not "most recently marked read" — expected, since the client sort is stable and only reorders by read/unread status. Zero console errors. `frontend/` (Angular) confirmed unaffected, 40/40 tests still pass.
+
+## Status
+
+Implemented and verified against the real running stack, backend and frontend both. Closes Phase 6 of ADR 0012/spec 0033 (the read-path scope of spec 0032 Phase 4a; live push, Phase 4b there, stays out of scope). Phase 7 (cutover) is next — the final phase: delete Angular, update docs/deployment, rename `frontend-next/` → `frontend/`.
+
 ## Branch
 
 `migration/nextjs-frontend` (continuing).
