@@ -42,4 +42,16 @@ Each service repo's own `docker-compose.yml` declares `dialex-net` as `external:
 
 Every product beyond Dialex (cofounder agent, EcosystemAI-style orchestration, XTTS voice cloning) gets folded into these same three repos later, one at a time — see `docs/adr/0013-multi-repo-service-split.md` for the full decision record and sequencing.
 
+### Local clone paths (keep this current — update it the moment any of this changes)
+
+| Repo | Local path | Remote |
+|---|---|---|
+| `dialex-backend` | `/home/lap-68/Documents/gt-dp/dialex-backend` | `github.com/deaxparadox/dialex-backend` |
+| `dialex-orchestrator` | `/home/lap-68/Documents/gt-dp/dialex-orchestrator` | `github.com/deaxparadox/dialex-orchestrator` |
+| `dialex-frontend` | `/home/lap-68/Documents/gt-dp/dialex-frontend` | `github.com/deaxparadox/dialex-frontend` |
+
+Claude (or any assistant) working from this repo is expected to read and edit files directly in these sibling repos when a task requires it — e.g. a backend change while doing frontend work, or porting a new product into one of them. They're on the same machine, no special access step needed. The same operating rules from this file apply there too: log first (that repo's own TODO.md/spec, or this repo's if the target repo doesn't have its own tracking file yet), root-cause fixes only, no new dependency without asking, and — per rule 20 above — commit to whatever branch is already checked out there, never create/switch/merge/delete a branch or push to `main`/`master` in any of these repos without the human explicitly asking.
+
+If a repo gets renamed, moved, re-cloned elsewhere, or a new sibling repo joins the platform, update this table (and the bullet list above it) in the same commit — this is exactly the kind of drift rule 21's "close the loop" discipline exists to prevent.
+
 ---
