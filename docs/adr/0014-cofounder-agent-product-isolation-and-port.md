@@ -28,7 +28,7 @@ The original's Django Channels WebSocket consumers (reading raw Redis pub/sub, w
 
 ## Sequencing
 
-1. **Phase 0** (spec 0043): the product-isolation scaffold above, applied to Dialex's *existing* code only — zero functional change. Verified standalone (full regression pass, same standard as every prior cutover) before any cofounder-specific code is written. Chosen deliberately separate from Phase 1 so a regression during verification is unambiguous — it can only be the restructuring, since no new code exists yet to blame it on.
+1. **Phase 0 — done** (spec 0043, 2026-09-08): the product-isolation scaffold above, applied to Dialex's *existing* code in all three repos, including the frontend (full symmetry, the user's explicit call). Zero functional change. Verified clean end to end — structural checks, a real Temporal worker re-registration, and a full real-browser regression pass including a real debate run. One necessary side fix along the way: a `seed_case_types` management command, since the dev-DB wipe (also explicitly approved) silently erased `CaseTypeConfig`/`AgentPersona` reference data that had never been seeded durably before. Committed in all three repos, not yet pushed.
 2. **Phase 1+** (not yet specced): cofounder's Django models/API (`apps/cofounder/*`), the LangGraph→Temporal-activity translation (`app/cofounder/*`), and the frontend chat surface — each gets its own spec when it starts, not bundled into one. New external dependencies this port needs (Pinecone, Google Places API, DALL-E, DuckDuckGo search) each require individual approval before being added, per this repo's standing no-new-dependency-without-asking rule.
 
 ## What this doesn't cover

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-08 (cofounder-agent port, Phase 0 — product-isolation scaffold)
+
+- ADR 0014 + spec 0043: moved Dialex's existing code into nested per-product packages across all three service repos, making room for the AI cofounder agent ("Brunda") as the platform's second product — `apps.dialex.*` (`dialex-backend`), `app.dialex.*` (`dialex-orchestrator`), `(protected)/dialex/*` (`dialex-frontend`, full symmetry after confirming the dev DB could be freely wiped). Home dashboard (`/`) stays put — no cross-product launcher exists yet. Zero functional change.
+- Fixed a real, previously-undocumented gap surfaced by the dev-DB wipe: `CaseTypeConfig`/`AgentPersona` reference data had never been seeded by anything durable, only ever created by hand. New idempotent `seed_case_types` management command in `dialex-backend` restores `loan_approval`'s content verbatim from specs 0030/0031, and drafts new (clearly labeled, not fabricated-as-original) content for the Pragmatist/Scale-minded/Moderator personas and both consultants, whose original text was never committed anywhere.
+- Verified end to end: structural Django checks clean on a fresh Postgres, the orchestrator's Temporal worker re-registered correctly after the module move, and a full real-browser regression (a real `loan_approval` consultation, a live debate run with the seeded personas reasoning about the case's actual numbers, a verdict, notifications, session persistence) passed clean — including confirming the old `/debates`/`/consultation`/`/notifications` routes now correctly 404. Committed in all three repos, not yet pushed. See [docs/adr/0014-cofounder-agent-product-isolation-and-port.md](docs/adr/0014-cofounder-agent-product-isolation-and-port.md) and [docs/specs/0043-phase0-cofounder-product-isolation-scaffold.md](docs/specs/0043-phase0-cofounder-product-isolation-scaffold.md).
+
 ## 2026-09-08 (multi-repo split — cutover complete, old copies deleted)
 
 - ADR 0013's final step: `backend/`, `orchestrator/`, and `frontend/` deleted from this repo (`git rm -r`) now that the split setup passed its full regression check (see the entry directly below). Full history for all three is preserved in `dialex-backend`/`dialex-orchestrator`/`dialex-frontend` (extracted earlier via `git filter-repo`) — nothing lost, just no longer duplicated here.
