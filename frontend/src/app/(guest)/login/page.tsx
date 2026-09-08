@@ -5,6 +5,15 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 
+// The `redirect` query param is attacker-controllable (a crafted login
+// link) — only a same-origin relative path is safe to navigate to;
+// anything else (an absolute or protocol-relative URL) falls back to '/'
+// rather than becoming an open redirect.
+function safeRedirect(raw: string | null): string {
+  if (raw && raw.startsWith('/') && !raw.startsWith('//') && !raw.startsWith('/\\')) return raw;
+  return '/';
+}
+
 // Ported from frontend/src/app/features/auth/login/{login.ts,login.html}.
 export default function LoginPage() {
   const { login } = useAuth();
@@ -23,7 +32,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(username, password);
-      router.replace(searchParams.get('redirect') ?? '/');
+      router.replace(safeRedirect(searchParams.get('redirect')));
     } catch {
       setError('Incorrect username or password.');
     } finally {

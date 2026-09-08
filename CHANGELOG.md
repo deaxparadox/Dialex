@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-08 (fix open redirect on /login)
+
+- Found by automated security review, post-cutover: `frontend/src/app/(guest)/login/page.tsx`'s post-login `router.replace(searchParams.get('redirect') ?? '/')` used the `redirect` query param unvalidated — a crafted login link could redirect a user to an attacker-controlled site immediately after a real, successful login. Fixed with a `safeRedirect()` guard requiring a same-origin relative path.
+
 ## 2026-09-08 (Next.js migration Phase 7 — cutover, migration complete)
 
 - Angular frontend deleted (`git rm -r frontend/` + its untracked build artifacts); `frontend-next/` renamed to `frontend/` via `git mv` (history preserved through the rename); `package.json`'s `name` updated to match. `frontend/` is now the Next.js app — the whole ADR 0012 migration (specs 0034-0041) is complete.
