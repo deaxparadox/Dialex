@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-08 (Next.js migration Phase 4a — debate thread, static render)
+
+- New `/debates/[id]` route in `frontend-next/`: renders a debate's already-persisted state — header card, opening statement, per-round argument bubbles (stable left/right agent sides and colors, position/confidence, "Responds to" citations), verdict block, the Minimal/Detail URL-driven toggle (a preserved no-op, matching Angular's own current behavior since spec 0016), and "Start debate" for a not-yet-started debate. No realtime yet — that's Phase 4b, split out per spec 0033's own anticipation given this component's size (the accumulated behavior of specs 0013-0029).
+- Verified against a real, already-`JUDGED` debate's actual database data (6 arguments across 3 rounds, a real verdict) — every fact checked out correctly. No real bugs found; one apparent citation mismatch traced to an incorrect assumption in the verification prompt itself, not the ported code (the argument in question genuinely responds to its own earlier point, not the opposing agent — confirmed against the real `responds_to_id`). `frontend/` (Angular) confirmed unaffected, 40/40 tests still pass. See [docs/specs/0037-nextjs-phase4a-debate-thread-static-render.md](docs/specs/0037-nextjs-phase4a-debate-thread-static-render.md).
+
 ## 2026-09-08 (Next.js migration Phase 3 — consultation chat)
 
 - New `/consultation` route in `frontend-next/`: case-type picker, message-turn flow, and the SSE step-indicator stream (`Thinking…`/`Double-checking…`/`Revising…`), ported from Angular's `consultation-chat`. The thinking-bubble's exact JS-measured pixel-width/3D-flip micro-animation (spec 0024) is simplified to a plain fade — same observable behavior, not the same mechanism (disclosed in spec 0036, not a silent cut). `(protected)`'s nav gains a "New case" link; `/debates`'s empty-state CTA (dropped in Phase 2 since its target didn't exist yet) is restored now that it does.

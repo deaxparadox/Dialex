@@ -1,6 +1,7 @@
 'use client';
 
 import { useApiFetch } from './api-fetch';
+import { config } from './config';
 
 // Ported field-for-field from frontend/src/app/features/debate/data/debates-api.ts.
 export interface ApiPersona {
@@ -56,8 +57,23 @@ export interface ApiCase {
   created_at: string;
 }
 
+export interface StartDebateResponse {
+  workflow_id: string;
+  run_id: string;
+}
+
+// Django owns reads (case/debate/argument data); the orchestrator owns
+// starting a workflow (spec 0005) — two different bases, same split
+// DebatesApi already established, not an inconsistency.
 export function useDebatesApi() {
   const apiFetch = useApiFetch();
+  const orchestratorFetch = useApiFetch(config.orchestratorApiBase);
+
+  async function getDebate(id: number): Promise<ApiDebate> {
+    const res = await apiFetch(`/api/debates/${id}/`);
+    if (!res.ok) throw new Error('failed to get debate');
+    return res.json();
+  }
 
   async function listDebates(): Promise<ApiDebate[]> {
     const res = await apiFetch('/api/debates/');
@@ -71,5 +87,23 @@ export function useDebatesApi() {
     return res.json();
   }
 
-  return { listDebates, listCases };
+  async function getCase(id: number): Promise<ApiCase> {
+    const res = await apiFetch(`/api/cases/${id}/`);
+    if (!res.ok) throw new Error('failed to get case');
+    return res.json();
+  }
+
+  async function getArguments(id: number): Promise<ApiArgument[]> {
+    const res = await apiFetch(`/api/debates/${id}/arguments/`);
+    if (!res.ok) throw new Error('failed to get arguments');
+    return res.json();
+  }
+
+  async function startDebate(id: number): Promise<StartDebateResponse> {
+    const res = await orchestratorFetch(`/api/debates/${id}/start`, { method: 'POST' });
+    if (!res.ok) throw new Error('failed to start debate');
+    return res.json();
+  }
+
+  return { getDebate, listDebates, listCases, getCase, getArguments, startDebate };
 }

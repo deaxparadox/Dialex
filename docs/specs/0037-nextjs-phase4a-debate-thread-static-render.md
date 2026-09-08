@@ -35,6 +35,20 @@ Everything listed under "Live" above — the WebSocket connection, `generatingTu
 
 Real browser: start a genuine debate via a direct orchestrator API call (or through the just-built `/consultation` flow) and let it run to `JUDGED` server-side before ever loading the Next.js page — this spec has no live-follow, so the verification must supply already-complete data, not rely on watching it progress. Confirm the loaded page renders: correct opening statement text, every argument bubble on the correct side with the correct color/avatar/position/confidence/citation line, the verdict block, `status_display`/humanized case type in the header. Confirm the Minimal/Detail toggle updates the URL query param and survives a reload. Confirm a debate still `OPEN` shows "Start debate," clicking it starts the workflow and the one-shot refetch reflects whatever state it's reached by then (still `OPEN` or already `ARGUING` — both acceptable, no live-follow expected yet). Confirm a not-owned/nonexistent debate id renders the not-found state, not a crash. Confirm `frontend/` unaffected, its own tests still pass.
 
+## Found during verification
+
+Real browser session against a genuine, already-`JUDGED` debate (id 61, `research_debate`, 6 real arguments across 3 rounds, a real verdict) — its data was pulled directly from Postgres first as ground truth. All rendered correctly: humanized case type, status/strategy/round/judge line, the opening statement, all 6 argument bubbles (position/confidence, never "generating…" since this debate is fully done), the verdict block, stable left/right agent sides across all 3 rounds, the mode-toggle's URL query param (survives a reload), and a clean "Debate not found." for a nonexistent id.
+
+One apparent citation mismatch was initially flagged, then traced to a mistake in the verification prompt itself, not the code: round 2's Scale-minded argument (id 237) has `responds_to_id=235`, and argument 235 is Scale-minded's **own** round-1 argument, not Pragmatist's — the agent was citing its earlier point, not rebutting the other side. The rendered "↩ Responds to Scale-minded, round 1" is exactly correct for that `responds_to_id`; the verification prompt had wrongly assumed round 2 must respond to the opposing agent without checking the actual DB value first. `fillRespondsToLabels` is ported byte-for-byte from the Angular original, so this also confirms no port-specific regression.
+
+Also confirmed, not a bug: Minimal and Detail modes render identically in this port, exactly matching Angular's own current behavior — the mode toggle has been a preserved no-op since spec 0016 removed the reading-panel Detail mode used to open ("reserved for a future definition," per that code's own comment), not a gap this phase introduced.
+
+No real bugs found. `frontend/` (Angular) confirmed unaffected, 40/40 tests still pass.
+
+## Status
+
+Implemented and verified against the real running stack. Closes Phase 4a of ADR 0012/spec 0033. Phase 4b (live streaming — WebSocket, generatingTurn/streamingText, thinking/reconnect branches, polling fallback) is next, its own spec to be written immediately.
+
 ## Branch
 
 `migration/nextjs-frontend` (continuing).
