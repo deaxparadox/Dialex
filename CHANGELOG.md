@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-08 (Next.js migration Phase 2 — Home dashboard + My debates list)
+
+- `frontend-next/`'s `/` now shows the real Home dashboard ADR 0011 designed but never built in Angular: a "Needs your review" bucket (`JUDGED`/`NO_CONSENSUS` debates, oldest first) and a slimmer "In progress" bucket (`ARGUING`/`CONVERGING`, oldest first) — `OPEN`/`FAILED` debates deliberately excluded, visible only in the full archive.
+- New `/debates` route — the full, unbucketed list, a direct port of Angular's `debates-list`. A minimal nav (Home/Debates/logout) was added to `(protected)/layout.tsx`, the first page in that route group to need one.
+- Verified with a real Canary session against a test user seeded with one debate per status: exact row counts and status labels matched in both buckets and the full archive, case types rendered humanized, nav and logout worked, clicking a debate row correctly 404'd (expected — the debate-detail page is Phase 4). No bugs found. `frontend/` (Angular) confirmed unaffected, 40/40 tests still pass. See [docs/specs/0035-nextjs-phase2-home-dashboard-and-debates-list.md](docs/specs/0035-nextjs-phase2-home-dashboard-and-debates-list.md).
+
 ## 2026-09-08 (Next.js migration Phase 1 — scaffold, theme, auth)
 
 - New `frontend-next/` app (App Router, TypeScript, Tailwind CSS, Turbopack) — the start of migrating off Angular (ADR 0012/spec 0033), running side by side with the untouched `frontend/` on a separate port, no reverse proxy. Closes Phase 1 (spec 0034): scaffold, the dual-brand/light-dark theme token system rebuilt in Tailwind v4's `@theme`/`@custom-variant` (same 22-property, 4-combination values as `frontend/src/styles.css`, not redesigned), and the JWT/CSRF auth flow ported as a React Context + a thin `fetch` wrapper (no HTTP-client dependency added) — memory-only access token, refresh-cookie session restore, client-side route guards (no Next.js proxy/middleware, since the token is deliberately never in a cookie it could read).

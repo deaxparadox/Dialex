@@ -38,6 +38,21 @@ Consultation chat, debate thread, Human Review, notifications — Phases 3-6. An
 
 Real browser, both apps running side by side: log in with an account that has a genuine mix of `OPEN`/`ARGUING`/`JUDGED`/`NO_CONSENSUS` debates (seed via Django admin or real consultation/debate runs if needed) and confirm Home's two buckets contain exactly the right debates in the right oldest-first order, `OPEN`/`FAILED` debates excluded from both; confirm `/debates` still shows every debate regardless of status, same as the Angular archive would for the same account. Confirm empty states render correctly for a fresh account with zero debates. Confirm case-type labels humanize correctly (e.g. `loan_approval` → "Loan approval") and match `frontend/`'s own rendering for the same data. Nav: Home/Debates links navigate correctly, logout still works from the new location. Regression: `frontend/` untouched, its own test suite still green.
 
+## Found during verification
+
+Seeded a real test user (`nextjs_phase2_qa`) directly in Postgres with exactly one debate per `Debate.Status` value (`OPEN`/`ARGUING`/`CONVERGING`/`JUDGED`/`NO_CONSENSUS`/`FAILED`), then verified with a real Canary browser session:
+- Home (`/`) showed exactly 2 rows under "Needs your review" (Judged, No consensus) and exactly 2 under "In progress" (Arguing, Converging) — 4 total, `OPEN`/`FAILED` correctly excluded from the whole page.
+- `/debates` showed all 6, every status included.
+- Case type rendered as "Loan approval" (humanized), not the raw `loan_approval` slug, on every row.
+- Nav (Home ↔ Debates ↔ logout) all worked; clicking a debate row correctly hit Next's built-in 404 page (expected — `/debates/{id}` doesn't exist until Phase 4), no crash.
+- Zero unexpected console errors. `frontend/` (Angular) confirmed unaffected — 40/40 tests still pass.
+
+No bugs found this phase.
+
+## Status
+
+Implemented and verified against the real running stack. Closes Phase 2 of ADR 0012/spec 0033. Phase 3 (consultation chat) is next, its own spec (0036+) to be written before it starts.
+
 ## Branch
 
 `migration/nextjs-frontend` (continuing).
