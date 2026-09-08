@@ -1,5 +1,9 @@
 name: dialex
 
+networks:
+  dialex-net:
+    name: dialex-net
+
 services:
   db:
     image: postgres:16
@@ -18,63 +22,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-
-  django:
-    build: ./backend
-    env_file:
-      - backend/.env
-    environment:
-      # Overrides backend/.env's localhost DATABASE_URL — inside compose,
-      # Django reaches Postgres via the service name, not localhost.
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-    volumes:
-      # Dev convenience: live code reload without rebuilding the image.
-      - ./backend/src:/app/src
-    ports:
-      - "8000:8000"
-    depends_on:
-      db:
-        condition: service_healthy
-
-  orchestrator:
-    build: ./orchestrator
-    env_file:
-      - orchestrator/.env
-    environment:
-      # Same override pattern as django — compose-internal hostname, not localhost.
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      REDIS_URL: redis://redis:6379/0
-    volumes:
-      - ./orchestrator/app:/app/app
-    ports:
-      # Host 8001 was already taken — mapped to 8010 instead (container
-      # still listens on 8001 internally).
-      - "8010:8001"
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-
-  orchestrator-worker:
-    build: ./orchestrator
-    command: python -m app.worker
-    env_file:
-      - orchestrator/.env
-    environment:
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      REDIS_URL: redis://redis:6379/0
-    volumes:
-      - ./orchestrator/app:/app/app
-    # No host port — a Temporal Worker polls outbound for work, it never
-    # accepts inbound connections (spec 0005).
-    depends_on:
-      db:
-        condition: service_healthy
-      temporal:
-        condition: service_started
-      redis:
-        condition: service_started
+    networks:
+      - dialex-net
 
   temporal-postgresql:
     image: postgres:${POSTGRESQL_VERSION}
@@ -88,6 +37,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - dialex-net
 
   temporal:
     image: temporalio/auto-setup:${TEMPORAL_VERSION}
@@ -103,10 +54,12 @@ services:
     ports:
       - "7233:7233"
     volumes:
-      - ./backend/dynamicconfig:/etc/temporal/config/dynamicconfig
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
     depends_on:
       temporal-postgresql:
         condition: service_healthy
+    networks:
+      - dialex-net
 
   temporal-ui:
     image: temporalio/ui:${TEMPORAL_UI_VERSION}
@@ -118,11 +71,15 @@ services:
       - "8088:8080"
     depends_on:
       - temporal
+    networks:
+      - dialex-net
 
   redis:
     image: redis:8
     ports:
       - "${REDIS_PORT}:6379"
+    networks:
+      - dialex-net
 
 volumes:
   db_data:

@@ -36,9 +36,9 @@ The existing `backend/`/`orchestrator/`/`frontend/` directories stay in this rep
 ## Sequencing
 
 1. **Done** (this ADR documents it retroactively — a process gap, logged here rather than silently left unrecorded): the three repos extracted and pushed.
-2. This ADR's companion spec (0042): design and build the platform-infra compose here plus each service repo's own compose, joined via the shared external network.
-3. Bring up the full split stack and run the same end-to-end real-browser journey used for the Next.js cutover (register → Home → consultation → a live debate run → Human Review → notifications → logout/login/reload) against the *new* split setup specifically.
-4. Only once verified: delete `backend/`/`orchestrator/`/`frontend/` from this repo, add a CLAUDE.md note documenting the new multi-repo layout and how to bring the whole stack up for local dev.
+2. **Done** (2026-09-08, spec 0042): platform-infra compose built here plus each service repo's own compose, joined via the shared external network `dialex-net`.
+3. **Done** (2026-09-08): brought up the full split stack and ran the end-to-end real-browser journey (register → login → Home → My debates → a real consultation → a live debate run with genuine WS streaming → Human Review/verdict → notifications → logout/login/reload/logout) against the *new* split setup specifically — passed clean, zero functionality lost. See spec 0042 and CHANGELOG.md for the full verification detail, including two non-blocking findings logged in TODO.md.
+4. **Unblocked, not yet done**: delete `backend/`/`orchestrator/`/`frontend/` from this repo, add a CLAUDE.md note documenting the new multi-repo layout and how to bring the whole stack up for local dev. Destructive within this repo — proceeding only on explicit user go-ahead, not automatically off step 3's pass.
 
 ## What this doesn't cover
 
