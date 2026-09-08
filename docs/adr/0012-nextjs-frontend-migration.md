@@ -39,3 +39,7 @@ Seven phases, each its own spec written just before it starts (not all up front)
 ## What this doesn't cover
 
 Any change to the Django/FastAPI backend beyond what Phases 5/6 already need for their own reasons (Human Review, Notifications endpoints) — the REST/WS/SSE contracts Next.js consumes are unchanged from what Angular already consumes today. Any redesign of app *behavior* beyond what ADR 0011 already decided — this is a framework/tooling migration, not a fresh product redesign.
+
+## Status
+
+All 7 phases implemented and verified (specs 0034-0041) — Angular deleted, `frontend/` is now the Next.js app. See `docs/specs/0033-nextjs-migration-umbrella.md`'s own Status footer for the phase-by-phase summary.

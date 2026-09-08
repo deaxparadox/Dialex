@@ -115,31 +115,26 @@ SIMPLE_JWT = {
 REFRESH_COOKIE_NAME = "refresh_token"
 REFRESH_COOKIE_PATH = "/api/auth/refresh/"
 
-# Matches Angular's built-in HttpClient XSRF defaults (ADR 0001) so the
-# frontend needs no special CSRF configuration when it starts calling these
-# endpoints.
+# Originally matched Angular's built-in HttpClient XSRF defaults (ADR
+# 0001); kept as-is post-cutover (spec 0041) since the Next.js frontend's
+# own fetch wrapper was built to match these same names (spec 0034).
 CSRF_COOKIE_NAME = "XSRF-TOKEN"
 CSRF_HEADER_NAME = "HTTP_X_XSRF_TOKEN"
 
 # CsrfViewMiddleware's Origin check is separate from — and unaffected by —
-# CORS_ALLOWED_ORIGINS above (CORS and CSRF are independent protections in
+# CORS_ALLOWED_ORIGINS below (CORS and CSRF are independent protections in
 # Django); caught via real browser verification as a 403 "Origin checking
 # failed" on every logout/refresh call, distinct from the CORS preflight
 # issue CORS_ALLOW_HEADERS fixed. Scheme is required (bare hostnames aren't
 # valid here, unlike CORS_ALLOWED_ORIGINS).
-CSRF_TRUSTED_ORIGINS = env.list(
-    "CSRF_TRUSTED_ORIGINS", default=["http://localhost:4200", "http://localhost:3000"]
-)
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=["http://localhost:3000"])
 
-# spec 0006 — the Angular dev server (localhost:4200) and Django
-# (localhost:8000) are different origins. Narrow allow-list, not a
-# wildcard (CORS_ALLOW_ALL_ORIGINS is incompatible with credentials
-# anyway) — extend this list, don't loosen it, if more dev origins show up.
-# localhost:3000 added for spec 0034 (Next.js dev server, ADR 0012 decision
-# 3 — both frontends run side by side against the same Django backend).
-CORS_ALLOWED_ORIGINS = env.list(
-    "CORS_ALLOWED_ORIGINS", default=["http://localhost:4200", "http://localhost:3000"]
-)
+# spec 0006 — the frontend dev server and Django (localhost:8000) are
+# different origins. Narrow allow-list, not a wildcard (CORS_ALLOW_ALL_ORIGINS
+# is incompatible with credentials anyway) — extend this list, don't loosen
+# it, if more dev origins show up. localhost:4200 (the retired Angular dev
+# server) removed in spec 0041's cutover — nothing runs there anymore.
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"])
 CORS_ALLOW_CREDENTIALS = True
 
 # django-cors-headers' own default allow-list includes "x-csrftoken" (Django's

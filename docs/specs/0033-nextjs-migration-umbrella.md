@@ -53,6 +53,19 @@ Any backend change beyond what Phases 5/6 need for their own reasons. Notificati
 
 Each phase gets its own real-browser verification against the running stack, matching this repo's existing standard — not a glance. Phase 1: real login/register/refresh/logout against the actual Django auth endpoints, both brand/mode combinations checked for contrast. Phase 2: a real account with a mix of judged/live debates confirms correct dashboard bucketing. Phase 3: a genuine multi-turn consultation negotiation through to approval. Phase 4: a full real debate run, token-by-token streaming confirmed frame-by-frame same as specs 0020/0021/0029 were. Phase 5: real 409-on-duplicate-review and ownership-IDOR checks on the new endpoint. Phase 6: ownership scoping on the new list endpoint, mark-read persists across reload. Phase 7: a full regression pass across every route before deleting the old app.
 
+## Status
+
+All 7 phases implemented and verified:
+1. Scaffold + theme + auth — spec 0034.
+2. Home dashboard + My debates list — spec 0035.
+3. Consultation chat — spec 0036.
+4. Debate thread (static render + live streaming, split into two sub-specs as anticipated) — specs 0037/0038.
+5. Human Review — spec 0039.
+6. Notifications (read path) — spec 0040.
+7. Cutover (Angular deleted, `frontend-next/` renamed to `frontend/`) — spec 0041.
+
+Migration complete. Not yet merged to `main` — a separate, human-directed step per this repo's standing branch-operations rule.
+
 ## Branch
 
 `migration/nextjs-frontend` (created for this initiative; not merged to `main` until each phase's implementation is reviewed, same discipline as the product-shell branch).

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-08 (Next.js migration Phase 7 — cutover, migration complete)
+
+- Angular frontend deleted (`git rm -r frontend/` + its untracked build artifacts); `frontend-next/` renamed to `frontend/` via `git mv` (history preserved through the rename); `package.json`'s `name` updated to match. `frontend/` is now the Next.js app — the whole ADR 0012 migration (specs 0034-0041) is complete.
+- Both Django's (`CORS_ALLOWED_ORIGINS`/`CSRF_TRUSTED_ORIGINS`) and the orchestrator's (`cors_allowed_origins`) now-dead `localhost:4200` allow-list entries removed — only `localhost:3000` remains trusted, since nothing runs on the old Angular dev port anymore.
+- `docs/API.md`/`docs/FLOWS.md` updated to drop the "Next.js only, Angular confirmed unaffected" qualifiers from every phase's own entry — they read as "this is the frontend" now, not "the new one." ADR 0012/spec 0033 given closing status notes.
+- Verified with a final full-app regression pass before deleting anything (register → Home → consultation → a live debate run → nav → notifications → logout/login/session-restore/reload) — no cross-phase regressions found across any of the shared files (nav, auth, API helpers) later phases touched. After the move: `frontend/` builds and lints clean from its new path, both backend services still work correctly against the narrowed CORS config, a real browser session against `localhost:3000` still passes. See [docs/specs/0041-nextjs-phase7-cutover.md](docs/specs/0041-nextjs-phase7-cutover.md).
+
 ## 2026-09-08 (Next.js migration Phase 6 — notifications, read path)
 
 - New `GET /api/notifications/` (ownership-scoped) and `PATCH /api/notifications/{id}/` (mark read, ownership-checked, 404 not a leaking 403) — the `Notification` model existed since scaffold time (spec 0002) but had no endpoint until now. Read path only, matching spec 0032 Phase 4a exactly; live push (that spec's Phase 4b) stays out of scope.

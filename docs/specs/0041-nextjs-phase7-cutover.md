@@ -36,6 +36,14 @@ Any new feature or behavior change — this phase moves files and retires now-de
 
 The regression pass in Fix §1 *is* the verification for this phase — there's no new code to verify beyond "did the move/deletion break anything," confirmed by: `frontend/` (the renamed Next.js app) builds clean (`next build`) and lints clean from its new path; every route above still resolves correctly with no broken relative imports; the backend/orchestrator still start clean with the narrowed CORS config and a real browser session against `localhost:3000` still works (proving `:4200`'s removal didn't accidentally also break the origin that matters); `git log --follow` on a representative moved file (e.g. `frontend/src/app/layout.tsx`) shows its Next.js-era history preserved through the rename.
 
+## Found during implementation
+
+`git mv frontend-next frontend` (with `frontend/` already `git rm -r`'d and its untracked build artifacts cleaned up first) produced a mix of plain renames and in-place modifications in `git status` — expected, not a problem: files that existed at both paths with different content (`README.md`, `package.json`, `package-lock.json`, `.gitignore`) show as modified-in-place rather than delete+add, since git's rename detection matched them by path once the old Angular versions were already gone.
+
+## Status
+
+Implemented and verified. Migration complete — closes ADR 0012/spec 0033 entirely. `frontend/` is now the Next.js app; `git log --follow` on files under the new path will show their Next.js-era history once this commit lands (nothing to follow before the rename, since the app didn't exist before spec 0034).
+
 ## Branch
 
 `migration/nextjs-frontend` (continuing) — merge to `main` is a separate, human-directed step per this repo's standing branch-operations rule, not part of this spec.

@@ -23,9 +23,9 @@ class Settings(BaseSettings):
     # (e.g. the start-debate button), a different origin from Django's own
     # CORS setup (spec 0006) — that config doesn't cover this service at all.
     # A behavioral knob with a safe dev default, not a secret (CLAUDE.md rule 5).
-    # localhost:3000 added for spec 0036 (Next.js dev server, ADR 0012
-    # decision 3 — same gap Django's own CORS config hit in spec 0034).
-    cors_allowed_origins: list[str] = ["http://localhost:4200", "http://localhost:3000"]
+    # localhost:4200 (the retired Angular dev server) removed in spec 0041's
+    # cutover — nothing runs there anymore.
+    cors_allowed_origins: list[str] = ["http://localhost:3000"]
 
 
 settings = Settings()
