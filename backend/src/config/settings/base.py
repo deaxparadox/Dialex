@@ -127,13 +127,19 @@ CSRF_HEADER_NAME = "HTTP_X_XSRF_TOKEN"
 # failed" on every logout/refresh call, distinct from the CORS preflight
 # issue CORS_ALLOW_HEADERS fixed. Scheme is required (bare hostnames aren't
 # valid here, unlike CORS_ALLOWED_ORIGINS).
-CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=["http://localhost:4200"])
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS", default=["http://localhost:4200", "http://localhost:3000"]
+)
 
 # spec 0006 — the Angular dev server (localhost:4200) and Django
 # (localhost:8000) are different origins. Narrow allow-list, not a
 # wildcard (CORS_ALLOW_ALL_ORIGINS is incompatible with credentials
 # anyway) — extend this list, don't loosen it, if more dev origins show up.
-CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=["http://localhost:4200"])
+# localhost:3000 added for spec 0034 (Next.js dev server, ADR 0012 decision
+# 3 — both frontends run side by side against the same Django backend).
+CORS_ALLOWED_ORIGINS = env.list(
+    "CORS_ALLOWED_ORIGINS", default=["http://localhost:4200", "http://localhost:3000"]
+)
 CORS_ALLOW_CREDENTIALS = True
 
 # django-cors-headers' own default allow-list includes "x-csrftoken" (Django's

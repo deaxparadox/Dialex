@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-08 (Next.js migration Phase 1 — scaffold, theme, auth)
+
+- New `frontend-next/` app (App Router, TypeScript, Tailwind CSS, Turbopack) — the start of migrating off Angular (ADR 0012/spec 0033), running side by side with the untouched `frontend/` on a separate port, no reverse proxy. Closes Phase 1 (spec 0034): scaffold, the dual-brand/light-dark theme token system rebuilt in Tailwind v4's `@theme`/`@custom-variant` (same 22-property, 4-combination values as `frontend/src/styles.css`, not redesigned), and the JWT/CSRF auth flow ported as a React Context + a thin `fetch` wrapper (no HTTP-client dependency added) — memory-only access token, refresh-cookie session restore, client-side route guards (no Next.js proxy/middleware, since the token is deliberately never in a cookie it could read).
+- Found and fixed during implementation: Django's CORS/CSRF allow-lists only trusted the Angular dev server's origin (`localhost:4200`) — added `localhost:3000` for the new app, required for ADR 0012 decision 3's side-by-side-servers approach to work at all. Also fixed a bug in the new app's own auth-bootstrap effect that let an unrelated fetch failure permanently strand the whole app on a blank screen.
+- Verified with two real Canary browser sessions against the live stack: the first caught the CORS gap (every route rendered blank), the second confirmed a full pass — register → session-restore-on-reload → logout → route-guard redirect → re-login → guest-guard redirect, plus both theme combinations computing the exact expected colors. `frontend/` (Angular) confirmed genuinely untouched, its own 40 tests still passing. See [docs/adr/0012-nextjs-frontend-migration.md](docs/adr/0012-nextjs-frontend-migration.md) and [docs/specs/0034-nextjs-phase1-scaffold-theme-auth.md](docs/specs/0034-nextjs-phase1-scaffold-theme-auth.md).
+
 ## 2026-08-25 (multi-theme token system — Phase 1)
 
 - Dual-brand multi-theme color system (Sunlit Citrus / Electric Contrast, each with light + dark) — Phase 1 of the product shell redesign (spec 0032, ADR 0011). Includes: `core/theme/theme.ts` service (persisted brand+mode preference), `styles.css` rewritten as a 4-way token matrix, temporary nav controls to try both brands/modes, and `debate-thread`'s old local/unpersisted light-dark toggle retired in favor of the global system.

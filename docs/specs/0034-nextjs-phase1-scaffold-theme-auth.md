@@ -56,6 +56,23 @@ Home dashboard, My-debates list, consultation chat, debate thread, Human Review,
 
 Real browser, both apps running side by side (`frontend/` on its existing port, `frontend-next/` on Next's default): register a new user, log in, confirm the placeholder page shows the username; hard-reload and confirm the session survives (refresh-cookie restore working, matching `restoreSession`'s current behavior); log out and confirm redirect to `/login`; hit `/` while logged out and confirm redirect to `/login`; hit `/login` while logged in and confirm redirect to `/`. Theme: toggle `localStorage`'s two keys directly and reload for all 4 brand×mode combinations plus the no-value (follow-system) case, confirming the same computed colors `styles.css` produces today (cross-checked via `getComputedStyle`, not just visually) and no flash of the wrong palette on load. Confirm `frontend/` is completely unaffected (its own test suite still passes, still runs on its own port) — this phase adds a new app, it does not touch the old one.
 
+## Found during implementation
+
+- Django's `CORS_ALLOWED_ORIGINS`/`CSRF_TRUSTED_ORIGINS` (`backend/src/config/settings/base.py`) only allow-listed `http://localhost:4200` (the Angular dev server) — ADR 0012 decision 3 (side-by-side dev servers, real cross-origin calls) needs `http://localhost:3000` added too, or every request from `frontend-next/` is CORS-blocked. Added to both lists' defaults, matching the existing code comment's own instruction ("extend this list... if more dev origins show up").
+- `AuthProvider`'s init effect (`lib/auth-context.tsx`) had the CSRF-bootstrap `fetch` outside any `try/catch` — if it throws for any reason (the CORS failure above, or later just a network blip), the effect never reaches `setReady(true)`, permanently stranding the whole app on a blank screen (`ready` stays `false` forever). Fixed by wrapping that fetch in its own `try/catch` so a bootstrap failure degrades to "attempt restore anyway, then render" instead of "never render."
+- A benign React hydration-mismatch warning on `<html data-theme>` (the pre-paint script sets it before hydration, same category of intentional SSR/client attribute disagreement every dark-mode-via-inline-script library has) — silenced with `suppressHydrationWarning` on the root `<html>` element, not a real bug.
+
+## Found during verification
+
+Two real, full-run Canary sessions against the actual running stack (Django + the Next.js dev server), not a dry read of the code:
+- First run: confirmed the CORS/blank-app bug above — every route (`/`, `/login`, `/register`) rendered nothing, caught via Next's dev error overlay pointing at the exact unguarded `fetch` call. Root-caused (not patched around) via a direct `curl -H "Origin: http://localhost:3000"` against the CSRF endpoint showing no `Access-Control-Allow-Origin` header at all.
+- Second run, after both fixes: full pass — register → redirected to `/` and shown the placeholder; hard-reload kept the session; logout redirected to `/login`; direct nav to `/` while logged out redirected to `/login?redirect=%2F`; re-login restored the session; direct nav to `/login` while authenticated redirected back to `/`. Theme: electric+dark computed `rgb(6, 11, 24)`, citrus+light computed `rgb(255, 253, 248)` — both exact matches. Zero console errors of any kind (the CORS error from the first run confirmed gone).
+- `frontend/` (Angular) confirmed genuinely unaffected: `git status` shows zero diff in that directory, and its own test suite (40/40, `ng test`/vitest) still passes unchanged.
+
+## Status
+
+Implemented and verified against the real running stack (Django + a live Next.js dev server, both real browser sessions via Canary). Closes Phase 1 of ADR 0012/spec 0033. Phase 2 (Home dashboard + My debates list) is next, its own spec (0035+) to be written before it starts.
+
 ## Branch
 
 `migration/nextjs-frontend` (continuing).
