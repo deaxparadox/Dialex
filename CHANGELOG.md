@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-09 (cofounder-agent port, Phase 1d — Google Places tool)
+
+- Spec 0047: adds `search_place_and_rating_v2` (real Google Places API (New) lookups, ported verbatim including its tool-selection docstring) to `ideation_agent`'s tool list. No new Python dependency — direct `aiohttp` calls, verified live against Google's current docs that the endpoint/field-mask shape is unchanged. New required, fail-fast `google_api_key` setting (same pattern as `openai_api_key`), using a real Google Cloud API key the user provided.
+- A real bug caught at worker startup: a relative-import dot-depth error (`tools/` sits one level deeper than `graphs.py`'s own directory) — fixed immediately.
+- Verified via real API calls and a full real-browser pass: a genuine Places lookup returned a specific, plausible real business (name, address, rating, a website independently confirmed live) — not hallucinated; regression-checked market research, roadmap, and image generation all still work correctly. See [docs/specs/0047-cofounder-phase1d-google-places-tool.md](docs/specs/0047-cofounder-phase1d-google-places-tool.md).
+
 ## 2026-09-09 (cofounder-agent port, Phase 1c — ideation agent + market research)
 
 - Spec 0046: adds the `ideation_agent` path — a `create_react_agent` bound to 2 honest Bubble.io placeholders and a fully-ported market-research web-search-and-scrape tool (the user's explicit call over a simplified version). Three new dependencies (`ddgs`, `beautifulsoup4`, `aiohttp`).

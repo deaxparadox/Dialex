@@ -50,3 +50,15 @@ Real API calls: a message that should clearly trigger a Places lookup (e.g. "fin
 ## Branch
 
 Continuing on `main` in `dialex-orchestrator` (no backend/frontend changes this phase), matching every prior phase.
+
+## Found during implementation
+
+A real bug caught at worker startup, not anticipated: `google_places.py`'s `from ...core.config import settings` used the wrong relative-import depth. `tools/` sits one level deeper than `graphs.py`'s own directory (`app/cofounder/chat/tools/` vs. `app/cofounder/chat/`), so reaching `app.core` needs 4 dots, not 3 — `market_research.py`/`bubble_placeholders.py` never hit this since neither imports from `core` at all. Fixed immediately; no further testing was blocked by it for long.
+
+## Found during verification
+
+No bugs beyond the one above. Verified via real API calls against the real running stack: a genuine Places lookup ("find me an employment lawyer in Bangalore") returned a specific, real-looking business — name, full street address, a 4.9 rating from 2,451 reviews, and a website (`kamalandcoadvocates.com`) that was independently curled and confirmed to return a real HTTP 200 — not hallucinated. An unfindable-business query ("Zzxqvplonk Frobnicate Consulting in Nowhereville") correctly returned a graceful "couldn't find it" reply, no crash. Regression-checked: market research, roadmap-`not_available`, and image generation all still route and work correctly in the same session. A direct DB check confirmed all 8 turns across these 4 request types persisted in the correct order. A full real-browser pass (Canary) independently reproduced the same result shape through the actual UI (a different, equally specific and plausible business — name, address, rating, review count, website) and confirmed all the same regression checks — zero console errors, zero failed/4xx/5xx requests across the whole run.
+
+## Status
+
+Implemented and verified against the real running stack. Committed and pushed to `dialex-orchestrator` (no backend/frontend changes this phase). Phase 1e (`roadmap_agent` + Pinecone RAG) is not yet specced — the last of the three real tools, and the heaviest lift (needs an account, a vector index, and real content to ingest).
