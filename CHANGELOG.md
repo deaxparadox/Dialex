@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-09 (cofounder-agent port, Phase 1f — structured 7-step graph)
+
+- Spec 0049: ports `entrepreneur_structured_graph` — a client-driven 7-step conversational flow, distinct from the free-form router graph ported in Phases 1a-1e. Each step reuses the same `ideation_llm_chat` react agent with a step-specific system prompt (verbatim, hundreds of lines each). `CofounderTurn` gains a nullable `step` column instead of reintroducing LangGraph's own checkpointer, keeping one persistence architecture (Temporal + a plain turns table) across both graphs — the original's own shared-checkpointer design has a real, unreproduced-here cross-thread collision risk. New `submit_structured_message` Temporal Update + `POST /sessions/{id}/structured-messages` endpoint, reusing the existing session/workflow. New frontend Mode selector (Free-form / Step 1-7).
+- One deliberate correction, not a bug-for-bug port: the original's "continuing the same step" branch sends the current user message twice (a real duplication bug) — this port sends it once.
+- Two real bugs hit and fixed: Temporal's LangGraph plugin rejects closures as node functions (needed 7 explicit module-level functions instead of a factory); `add_conditional_edges`'s path map needed an identity mapping since the routing function already returns the target node name.
+- Verified via real API calls (the exact scripted Step 1 opening reproduced verbatim; step-switching correctly resets/resumes per the original's actual behavior; DB checks confirm correct `step` persistence and free-form/structured coexistence) and a full real-browser QA pass. See [docs/specs/0049-cofounder-phase1f-structured-graph.md](docs/specs/0049-cofounder-phase1f-structured-graph.md).
+
 ## 2026-09-09 (cofounder-agent port, Phase 1e — Pinecone RAG + basic roadmap)
 
 - Spec 0048: ingests the original's 6 training documents into a real Pinecone index (`ddgs`-style verified-not-hallucinated retrieval), adds `query_pinecone_tool` to `ideation_agent`, and a basic `roadmap_agent` producing a structured, LLM-generated roadmap. Uses Pinecone's newer integrated-index feature (embeds server-side, no separate OpenAI embedding call) per the user's call. The 31-file downloadable-template system discovered mid-investigation is deferred to Phase 1f, its own spec.
