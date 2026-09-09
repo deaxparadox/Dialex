@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-09 (cofounder-agent port, Phase 1e — Pinecone RAG + basic roadmap)
+
+- Spec 0048: ingests the original's 6 training documents into a real Pinecone index (`ddgs`-style verified-not-hallucinated retrieval), adds `query_pinecone_tool` to `ideation_agent`, and a basic `roadmap_agent` producing a structured, LLM-generated roadmap. Uses Pinecone's newer integrated-index feature (embeds server-side, no separate OpenAI embedding call) per the user's call. The 31-file downloadable-template system discovered mid-investigation is deferred to Phase 1f, its own spec.
+- All 3 router destinations are now real; the earlier phases' `not_available` fallback node became genuinely unreachable and was removed.
+- Several real SDK-version surprises hit and fixed, each verified against the actually-installed `pinecone==10.0.0` package rather than docs alone (a 2026-07 API change had moved past what was documented): `create(spec=IntegratedSpec(...))` rejected in favor of `create_for_model`, `indexes.list()` needing `async for` not `await`, `pc.index(host=...)` itself needing `await`. A real external account limit (Pinecone's 5-index cap) required a different API key. A local port-3000 conflict during verification (an unrelated project, not a stray process) was resolved on port 3042 with an additive CORS trusted-origin override.
+- Verified via real API calls (104 real ingested chunks; a RAG reply independently cross-checked word-for-word against the source document; a real 10-step roadmap; market research/Places/image-generation regression-checked clean) and a full real-browser pass. See [docs/specs/0048-cofounder-phase1e-pinecone-rag-roadmap.md](docs/specs/0048-cofounder-phase1e-pinecone-rag-roadmap.md).
+
 ## 2026-09-09 (cofounder-agent port, Phase 1d — Google Places tool)
 
 - Spec 0047: adds `search_place_and_rating_v2` (real Google Places API (New) lookups, ported verbatim including its tool-selection docstring) to `ideation_agent`'s tool list. No new Python dependency — direct `aiohttp` calls, verified live against Google's current docs that the endpoint/field-mask shape is unchanged. New required, fail-fast `google_api_key` setting (same pattern as `openai_api_key`), using a real Google Cloud API key the user provided.

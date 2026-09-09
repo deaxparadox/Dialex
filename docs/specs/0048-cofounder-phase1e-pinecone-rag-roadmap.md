@@ -53,3 +53,25 @@ The 31-file template/workbook system, `services/template.yaml`, the `TemplateWor
 ## Branch
 
 Continuing on `main` in `dialex-orchestrator` (no backend/frontend changes this phase), matching every prior phase.
+
+## Found during implementation
+
+Several real bugs, all verified against the actually-installed SDK rather than assumed from docs — the installed `pinecone==10.0.0` had moved past a 2026-07 API change more recent than what was documented:
+
+1. `pc.indexes.create(spec=IntegratedSpec(...))` is rejected outright by the installed SDK. Its own error message named the correct replacement directly (`create_for_model`), which the ingestion script now uses — a genuinely helpful, self-documenting library error, not something requiring external research to resolve.
+2. `pc.indexes.list()` returns an async paginator, not something directly awaitable — needs `async for idx in pc.indexes.list()`, not `await pc.indexes.list()`.
+3. `pc.index(host=...)` is itself a coroutine that must be awaited before it can be used as an async context manager — hit in both the ingestion script and `query_pinecone_tool`, same fix in both places.
+4. The exact same relative-import depth mistake from spec 0047 recurred in a new `tools/` file (`pinecone_rag.py`) — caught immediately at worker startup, same fix (4 dots to reach `app.core`, not 3, since `tools/` sits one level deeper than `graphs.py`'s own directory). A scan across the whole `cofounder/` module confirmed no other occurrence.
+5. `scripts/` was never copied into the Docker image — the `Dockerfile` only copied `app/`. Fixed with both a `Dockerfile` `COPY` and a matching `docker-compose.yml` bind mount, the same dev-convenience pattern `app/` already had.
+
+A real external constraint, not a code bug: the Pinecone account's `Default` project was already at its 5-serverless-index cap. Verified genuinely reached, not a fluke — a second attempt after the user switched to a different `.env`-set API key hit the identical error, which in turn surfaced a real local Docker lesson: `docker compose restart` does **not** re-read `env_file` — environment variables are baked in at container *creation*, not read fresh at process start. `docker compose up -d --force-recreate` was needed to actually pick up the new key, confirmed by reading `settings.pinecone_api_key` directly inside the running container before and after. Once genuinely on the new account (confirmed 0 existing indexes), a single index named `brunda` seen during investigation of the *first* key belonged to that other account entirely — flagged to the user before touching anything, resolved once the account mixup itself was found and fixed, not by touching that index.
+
+## Found during verification
+
+A real, unrelated local environment conflict during the real-browser verification pass (not an application bug): port 3000 was held by a VS Code process serving a completely different project, not a stray `next dev` process left over from an earlier session. The QA agent correctly refused to kill an unknown process without asking. Resolved by running `dialex-frontend` on port 3042 and adding `http://localhost:3042` as an *additional* trusted origin (via `.env` overrides for both `CORS_ALLOWED_ORIGINS`/`CSRF_TRUSTED_ORIGINS` in `dialex-backend` and `cors_allowed_origins` in `dialex-orchestrator`) rather than replacing the project's documented `localhost:3000` standard — a same-day accommodation, not a standing convention change (`.env.example` in either repo was deliberately left untouched).
+
+No application bugs found beyond the ones listed above. Verified via real API calls against the real running stack: the ingestion script produced exactly 104 real chunks across all 6 files (10+4+6+13+14+57, matching each file's actual paragraph content); a RAG-triggering query's reply was independently cross-checked word-for-word against the actual `free_databases_by_country.docx` content (same document title, same "World Bank Entrepreneurship Database"/"Global Entrepreneurship Monitor" entries, same URLs) — genuinely retrieved, not hallucinated; a roadmap request produced a real, coherent 10-step structured roadmap with correct strengths/risks framing, and correctly left funding/mentorship sections empty rather than fabricating specifics, per the prompt's own instruction; a direct DB check confirmed all 8 turns across 4 request types (RAG, roadmap, image, Places) persisted in the correct order. A full real-browser pass (Canary) independently reproduced the same RAG/roadmap behavior through the actual UI and reconfirmed image generation and Google Places both still work — zero console errors, zero failed/4xx/5xx requests across the whole run.
+
+## Status
+
+Implemented and verified against the real running stack. Committed and pushed to `dialex-orchestrator` (no backend/frontend changes this phase). Phase 1f (the 31-file downloadable-template/workbook system + its file-download endpoint + per-step Pinecone resource enrichment) is not yet specced — the last piece needed to fully close ADR 0014's original cofounder-agent scope.
