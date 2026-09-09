@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-09 (cofounder-agent port, Phase 1c — ideation agent + market research)
+
+- Spec 0046: adds the `ideation_agent` path — a `create_react_agent` bound to 2 honest Bubble.io placeholders and a fully-ported market-research web-search-and-scrape tool (the user's explicit call over a simplified version). Three new dependencies (`ddgs`, `beautifulsoup4`, `aiohttp`).
+- Real, verified deviation from a literal port: the original's `duckduckgo_search` package was renamed to `ddgs`, and LangChain's own wrapper around it has a real, currently-open compatibility bug — bypassed that wrapper entirely and called `ddgs`'s documented API directly, which also fixed a genuine field-name mismatch the original code had (`href`, not `link`).
+- Verified via real API calls and a full real-browser pass: a genuine market-research request returned specific, current data with a real cited source URL (independently confirmed to resolve to a live page, not a hallucination); the placeholder tools degrade gracefully; roadmap/image-generation routing regression-checked clean. See [docs/specs/0046-cofounder-phase1c-ideation-agent-market-research.md](docs/specs/0046-cofounder-phase1c-ideation-agent-market-research.md).
+
 ## 2026-09-09 (cofounder-agent port, Phase 1b — router + image generation)
 
 - Spec 0045: replaces Phase 1a's placeholder reply with a real router (an LLM decision between image-generation and everything-else) and a fully real image-generation path — ported as a genuine LangGraph `StateGraph` run via `temporalio.contrib.langgraph`'s `LangGraphPlugin`, the same mechanism `ConsultationWorkflow` already uses. `ideation`/`roadmap` deferred to their own specs (each needs its own new-dependency approval).

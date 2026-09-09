@@ -46,3 +46,15 @@ Real API calls: a message that should clearly trigger ideation with real market 
 ## Branch
 
 Continuing on `main` in `dialex-orchestrator` (no backend/frontend changes this phase), matching every prior phase.
+
+## Found during implementation
+
+The first draft's `_ideation_agent` needlessly special-cased the last turn (splitting `state["turns"]` into history + a separately-appended "current message") — since `turns` already ends with the just-persisted user message (same convention established in spec 0044), this was redundant; simplified to a single loop over all turns. No functional bug, just unnecessary code caught before it shipped.
+
+## Found during verification
+
+No bugs. Verified via real API calls against a real running stack (not curl-once-then-assume): a genuine market-research request ("run an actual market research search... for artisanal coffee subscription boxes") returned a reply citing a specific market-size figure ($1,281.2M → $3,500M projected, 10.6% CAGR) with a real source URL — confirming the `ddgs`-based search-and-scrape pipeline actually executed, not a generic LLM answer. A first, less pointed message ("is this a good market?") legitimately triggered the agent's own clarifying-question behavior instead of an immediate tool call — expected, matches the ported prompt's own instructions, not a bug. The placeholder Bubble.io tools were exercised directly (a message asking to check the internal freelancer/entrepreneur database) — the agent called the tool, got the "not connected" result, and gracefully redirected to external alternatives, no crash. Regression-checked: a roadmap-requesting message still correctly hits `not_available`; an image-generation request still correctly produces a real image. A direct DB check confirmed all 10 turns across these 4 request types persisted in the correct order. A full real-browser pass (Canary) independently re-verified the cited market-research URL actually resolves to a real, live page (not a hallucination) and confirmed the same regression checks through the actual UI — zero console errors, zero failed/4xx/5xx requests across every step.
+
+## Status
+
+Implemented and verified against the real running stack. Committed and pushed to `dialex-orchestrator` (no backend/frontend changes this phase). Phase 1d (Google Places tool) and Phase 1e (`roadmap_agent` + Pinecone RAG) are not yet specced.
