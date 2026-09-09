@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-09 (cofounder-agent port, Phase 1b — router + image generation)
+
+- Spec 0045: replaces Phase 1a's placeholder reply with a real router (an LLM decision between image-generation and everything-else) and a fully real image-generation path — ported as a genuine LangGraph `StateGraph` run via `temporalio.contrib.langgraph`'s `LangGraphPlugin`, the same mechanism `ConsultationWorkflow` already uses. `ideation`/`roadmap` deferred to their own specs (each needs its own new-dependency approval).
+- Two real bugs caught during implementation: `dall-e-3` doesn't exist on this project's OpenAI account anymore (verified directly) — switched to `gpt-image-1`, which returns base64 instead of a URL (a real API difference confirmed against the SDK docs); and a full base64 image blew past Temporal's payload size limit on first run — fixed with a new `CofounderGeneratedImage` table written directly by the graph node itself, with only a small row id crossing the Temporal boundary, served back via a new authenticated REST endpoint.
+- Verified via direct API/DB checks and a full real-browser pass — three distinct real images rendered inline across one chat session, non-image requests correctly show a "not available yet" message, zero console/network errors. See [docs/specs/0045-cofounder-phase1b-router-and-image-generation.md](docs/specs/0045-cofounder-phase1b-router-and-image-generation.md).
+
 ## 2026-09-08 (cofounder-agent port, Phase 1a — chat mechanism)
 
 - Spec 0044: a new `apps.cofounder.chat` Django app (`CofounderSession`/`CofounderTurn`), a `CofounderWorkflow` in `dialex-orchestrator` mirroring `ConsultationWorkflow`'s long-running-Update pattern, and a minimal `(protected)/cofounder` chat page — proves the Django-owns-data/Temporal-owns-execution mechanism end to end with a single plain LLM call (no LangGraph graph, no tools yet, no WebSocket — the original's reply is already synchronous, verified against its actual source).
